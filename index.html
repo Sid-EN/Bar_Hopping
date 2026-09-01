@@ -4,14 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>台灣微醺指南 | TAIWAN BAR BIBLE</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <style>
-        :root { --gold: #d4af37; --dark: #121212; --card: #1e1e1e; --text: #e0e0e0; --muted: #888; --line: #333; }
+        :root { --gold: #d4af37; --dark: #121212; --card: #1e1e1e; --text: #e0e0e0; --muted: #888; --line: #333;
+                --open: #5ac77f; --closed: #d96a6a; --want: #ff6b8a; --visited: #5ac77f; }
         * { box-sizing: border-box; }
-        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: var(--dark); color: var(--text); margin: 0; padding: 20px; line-height: 1.6; }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: var(--dark); color: var(--text); margin: 0; padding: 20px 20px 90px; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; }
-        header { text-align: center; padding: 40px 0 30px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+        header { text-align: center; padding: 36px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
         h1 { color: var(--gold); letter-spacing: 3px; margin: 0; font-size: 2rem; }
         .subtitle { color: var(--muted); margin-top: 10px; }
+
+        /* 工具列：檢視切換與進度 */
+        .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+        .view-switch { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
+        .view-switch button { background: transparent; border: none; color: var(--muted); padding: 8px 20px; cursor: pointer; font-size: 0.9rem; font-family: inherit; transition: 0.2s; }
+        .view-switch button.active { background: var(--gold); color: #000; font-weight: bold; }
+        .progress-wrap { flex: 1; min-width: 200px; max-width: 340px; }
+        .progress-label { font-size: 0.78rem; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .progress-bar { height: 6px; background: #2c2c2c; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--visited)); transition: width 0.4s; }
 
         /* 縣市分區頁籤 */
         .city-nav { margin-bottom: 24px; }
@@ -24,7 +36,7 @@
         .city-tab .cnt { font-size: 0.75rem; opacity: 0.65; margin-left: 4px; }
 
         /* 篩選區 */
-        .filter-panel { background: var(--card); padding: 20px 25px; border-radius: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; border: 1px solid var(--line); }
+        .filter-panel { background: var(--card); padding: 20px 25px; border-radius: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 16px; margin-bottom: 20px; border: 1px solid var(--line); }
         .filter-group label { display: block; color: var(--gold); font-size: 0.85rem; margin-bottom: 8px; font-weight: bold; }
         select, input[type=text] { width: 100%; padding: 11px 12px; background: #2c2c2c; border: 1px solid #444; color: #fff; border-radius: 8px; outline: none; font-size: 0.9rem; font-family: inherit; }
         input:focus, select:focus { border-color: var(--gold); }
@@ -34,11 +46,15 @@
         .bar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
         .bar-card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #2c2c2c; transition: 0.3s; position: relative; display: flex; flex-direction: column; cursor: pointer; }
         .bar-card:hover, .bar-card:focus-visible { transform: translateY(-5px); border-color: var(--gold); box-shadow: 0 10px 20px rgba(0,0,0,0.5); outline: none; }
+        .bar-card.in-route { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
 
         .badge-row { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
         .special-badge { background: var(--gold); color: #000; font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
         .award-badge { background: #3a1c4f; color: #d9b8ff; border: 1px solid #7e57c2; font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
-        .bar-name { font-size: 1.25rem; font-weight: bold; color: var(--gold); margin-right: 84px; }
+        .status-badge { background: #4a1c1c; color: #ff9a9a; border: 1px solid #a33; font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+        .bar-card.is-closed { opacity: 0.6; }
+        .bar-card.is-closed .bar-name { color: #999; }
+        .bar-name { font-size: 1.25rem; font-weight: bold; color: var(--gold); margin-right: 92px; }
         .bar-info { font-size: 0.85rem; color: #aaa; margin: 8px 0; }
         .price { color: var(--gold); letter-spacing: 1px; }
         .price .off { color: #555; }
@@ -48,20 +64,57 @@
         .tag-friend { background: #4f2a1c; color: #ffb28a; }
         .tag-award { background: #3a1c4f; color: #d9b8ff; }
         .bar-note { font-size: 0.9rem; color: #bbb; border-top: 1px solid var(--line); padding-top: 12px; margin-top: auto; }
+        .bar-details { font-size: 0.8rem; color: var(--muted); margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
 
-        .bar-details { font-size: 0.8rem; color: var(--muted); margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
-        .bar-details .rating { color: #f5c518; }
-        .bar-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+        /* 營業狀態 */
+        .open-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; padding: 2px 10px; border-radius: 20px; font-weight: bold; }
+        .open-pill.open { background: rgba(90,199,127,0.15); color: var(--open); }
+        .open-pill.soon { background: rgba(212,175,55,0.15); color: var(--gold); }
+        .open-pill.closed { background: rgba(217,106,106,0.13); color: var(--closed); }
+        .open-pill.unknown { background: #2c2c2c; color: var(--muted); }
+
+        /* Google 五星 */
+        .rating-row { display: flex; align-items: center; gap: 6px; }
+        .stars { position: relative; display: inline-block; color: #4a4a4a; font-size: 0.95rem; line-height: 1; letter-spacing: 0; }
+        .stars::before { content: '\2605\2605\2605\2605\2605'; }
+        .stars-fill { position: absolute; top: 0; left: 0; overflow: hidden; white-space: nowrap; color: #f5c518; }
+        .stars-fill::before { content: '\2605\2605\2605\2605\2605'; }
+        .rating-num { color: #f5c518; font-weight: bold; }
+        .rating-count { color: var(--muted); }
+        .budget { color: #9fd4a3; }
+
+        /* 動作按鈕 */
+        .bar-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         .btn { display: inline-block; background: transparent; border: 1px solid var(--gold); color: var(--gold); font-size: 0.8rem; padding: 6px 14px; border-radius: 20px; text-decoration: none; transition: 0.2s; cursor: pointer; font-family: inherit; }
         .btn:hover { background: var(--gold); color: #000; }
         .btn-ghost { border-color: #555; color: #aaa; }
         .btn-ghost:hover { background: #555; color: #fff; }
+        .icon-btn { background: transparent; border: 1px solid var(--line); color: var(--muted); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 0.95rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; padding: 0; font-family: inherit; }
+        .icon-btn:hover { border-color: var(--gold); color: var(--gold); }
+        .icon-btn.on-want { border-color: var(--want); color: var(--want); background: rgba(255,107,138,0.12); }
+        .icon-btn.on-visited { border-color: var(--visited); color: var(--visited); background: rgba(90,199,127,0.12); }
+        .icon-btn.on-route { border-color: var(--gold); color: #000; background: var(--gold); }
+        .my-rating { color: var(--gold); font-size: 0.78rem; }
 
         .empty { text-align: center; color: var(--muted); padding: 60px 0; }
         footer { text-align: center; color: #555; font-size: 0.75rem; margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--line); }
 
+        /* 地圖 */
+        #mapView { display: none; }
+        #mapView.active { display: block; }
+        #map { height: 62vh; min-height: 420px; border-radius: 14px; border: 1px solid var(--line); background: #1a1a1a; }
+        .map-note { font-size: 0.8rem; color: var(--muted); margin-top: 10px; text-align: center; }
+        .leaflet-popup-content-wrapper { background: var(--card); color: var(--text); border-radius: 10px; }
+        .leaflet-popup-tip { background: var(--card); }
+        .leaflet-popup-content { margin: 12px 14px; font-family: inherit; }
+        .popup-name { color: var(--gold); font-weight: bold; font-size: 1rem; }
+        .popup-meta { color: #aaa; font-size: 0.8rem; margin: 4px 0 8px; }
+        .map-legend { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 12px; font-size: 0.78rem; color: var(--muted); }
+        .map-legend span { display: inline-flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
         /* 詳細頁 Modal */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.82); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.82); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
         .modal-overlay[hidden] { display: none; }
         .modal { background: var(--card); border: 1px solid var(--gold); border-radius: 16px; max-width: 640px; width: 100%; max-height: 88vh; overflow-y: auto; position: relative; padding: 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
         .modal-close { position: absolute; top: 14px; right: 16px; background: transparent; border: none; color: var(--muted); font-size: 1.8rem; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
@@ -77,8 +130,24 @@
         .modal-map { width: 100%; height: 260px; border: 1px solid var(--line); border-radius: 10px; margin-top: 8px; background: #222; }
         .modal-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
         .modal-section-label { color: var(--muted); font-size: 0.78rem; letter-spacing: 1px; margin-top: 18px; }
+        .my-rate-row { display: flex; align-items: center; gap: 10px; background: #262626; padding: 12px 16px; border-radius: 10px; margin: 14px 0; flex-wrap: wrap; }
+        .rate-stars button { background: transparent; border: none; color: #4a4a4a; font-size: 1.35rem; cursor: pointer; padding: 0 2px; line-height: 1; }
+        .rate-stars button.lit { color: var(--gold); }
+
+        /* 今晚路線（底部固定列） */
+        .route-bar { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(24,24,24,0.97); border-top: 1px solid var(--gold); padding: 12px 20px; z-index: 900; backdrop-filter: blur(6px); }
+        .route-bar[hidden] { display: none; }
+        .route-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .route-title { color: var(--gold); font-weight: bold; font-size: 0.9rem; white-space: nowrap; }
+        .route-chips { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 200px; }
+        .route-chip { background: #2c2c2c; border: 1px solid var(--line); border-radius: 20px; padding: 4px 10px 4px 12px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; }
+        .route-chip .seq { color: var(--gold); font-weight: bold; }
+        .route-chip button { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0; }
+        .route-chip button:hover { color: var(--closed); }
+        .route-dist { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
 
         @media (max-width: 600px) {
+            body { padding: 16px 16px 110px; }
             .filter-panel { grid-template-columns: 1fr; }
             .region-row { flex-direction: column; gap: 6px; }
             .region-label { flex: none; text-align: left; border-right: none; border-bottom: 1px solid var(--line); padding: 0 0 2px; width: 100%; }
@@ -86,6 +155,8 @@
             .modal { padding: 22px 18px; max-height: 92vh; }
             .modal-rows { grid-template-columns: 1fr; gap: 2px; }
             .modal-rows dt { margin-top: 8px; }
+            .toolbar { justify-content: center; }
+            #map { height: 55vh; }
         }
     </style>
 </head>
@@ -96,6 +167,17 @@
         <h1>TAIWAN BAR BIBLE</h1>
         <div class="subtitle" id="subtitle">全台酒友、脆友、老酒鬼推薦清單</div>
     </header>
+
+    <div class="toolbar">
+        <div class="view-switch">
+            <button id="viewList" class="active">📋 清單</button>
+            <button id="viewMap">🗺️ 地圖</button>
+        </div>
+        <div class="progress-wrap">
+            <div class="progress-label"><span>🍸 已攻略</span><span id="progressText">0 / 0</span></div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        </div>
+    </div>
 
     <nav class="city-nav" id="cityNav"></nav>
 
@@ -137,6 +219,16 @@
             </select>
         </div>
         <div class="filter-group">
+            <label>🕒 狀態</label>
+            <select id="stateFilter">
+                <option value="all">全部</option>
+                <option value="open">現在還有開</option>
+                <option value="want">❤️ 我的收藏</option>
+                <option value="visited">✓ 已喝過</option>
+                <option value="unvisited">尚未喝過</option>
+            </select>
+        </div>
+        <div class="filter-group">
             <label>↕️ 排序方式</label>
             <select id="sortFilter">
                 <option value="default">預設（依縣市）</option>
@@ -155,6 +247,18 @@
     <div class="result-count" id="resultCount">正在載入清單...</div>
     <div class="bar-grid" id="barGrid"></div>
 
+    <div id="mapView">
+        <div id="map"></div>
+        <div class="map-legend">
+            <span><i class="dot" style="background:#b388ff"></i>獲獎名店</span>
+            <span><i class="dot" style="background:#d4af37"></i>私心推薦</span>
+            <span><i class="dot" style="background:#5ac77f"></i>已喝過</span>
+            <span><i class="dot" style="background:#ff6b8a"></i>我的收藏</span>
+            <span><i class="dot" style="background:#8a8a8a"></i>其他</span>
+        </div>
+        <div class="map-note" id="mapNote"></div>
+    </div>
+
     <footer>酒吧資訊（評分、營業時間等）為整理時之參考值，出發前請以店家公告為準｜未成年請勿飲酒 🍸 酒後不開車</footer>
 </div>
 
@@ -165,219 +269,18 @@
     </div>
 </div>
 
+<div class="route-bar" id="routeBar" hidden>
+    <div class="route-inner">
+        <span class="route-title">🍺 今晚路線</span>
+        <div class="route-chips" id="routeChips"></div>
+        <span class="route-dist" id="routeDist"></span>
+        <a class="btn" id="routeGo" href="#" target="_blank" rel="noopener">🚕 開始導航</a>
+        <button class="btn btn-ghost" id="routeClear">清空</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="data.js"></script>
-<script>
-    // ===== 縣市分區設定（依此順序呈現頁籤；資料中沒有的縣市自動隱藏）=====
-    const REGIONS = [
-        { label: '北部', cities: ['台北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣'] },
-        { label: '中部', cities: ['苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣'] },
-        { label: '南部', cities: ['嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣'] },
-        { label: '東部離島', cities: ['宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', '金門縣', '連江縣'] }
-    ];
-
-    let currentCity = 'all';
-
-    const grid = document.getElementById('barGrid');
-    const countDisplay = document.getElementById('resultCount');
-    const districtSelect = document.getElementById('districtFilter');
-    const overlay = document.getElementById('modalOverlay');
-    const modalContent = document.getElementById('modalContent');
-
-    BARS.forEach((b, i) => { b._id = i; });
-
-    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const isFriend = b => b.friend || (b.note || '').includes('脆友推薦');
-    const hasAward = b => Array.isArray(b.awards) && b.awards.length > 0;
-    const cityCount = city => BARS.filter(b => b.city === city).length;
-    const mapQuery = b => encodeURIComponent(b.address || `${b.name} ${b.city}${b.district || ''}`);
-
-    // ===== 縣市頁籤 =====
-    function renderCityNav() {
-        const nav = document.getElementById('cityNav');
-        let html = `<div class="region-row"><div class="region-label">全台</div><div class="city-tabs">` +
-            `<button class="city-tab ${currentCity === 'all' ? 'active' : ''}" data-city="all">全部酒吧<span class="cnt">${BARS.length}</span></button></div></div>`;
-        for (const region of REGIONS) {
-            const cities = region.cities.filter(c => cityCount(c) > 0);
-            if (!cities.length) continue;
-            html += `<div class="region-row"><div class="region-label">${region.label}</div><div class="city-tabs">` +
-                cities.map(c => `<button class="city-tab ${currentCity === c ? 'active' : ''}" data-city="${c}">${c}<span class="cnt">${cityCount(c)}</span></button>`).join('') +
-                `</div></div>`;
-        }
-        nav.innerHTML = html;
-        nav.querySelectorAll('.city-tab').forEach(btn => btn.addEventListener('click', () => selectCity(btn.dataset.city)));
-    }
-
-    function selectCity(city) {
-        currentCity = city;
-        renderCityNav();
-        updateDistrictOptions();
-        update();
-    }
-
-    // ===== 行政區選單（依所選縣市動態產生）=====
-    function updateDistrictOptions() {
-        const pool = currentCity === 'all' ? BARS : BARS.filter(b => b.city === currentCity);
-        const districts = [...new Set(pool.map(b => b.district).filter(Boolean))];
-        districtSelect.innerHTML = '<option value="all">所有行政區</option>' +
-            districts.map(d => `<option value="${d}">${d}</option>`).join('');
-    }
-
-    // ===== 排序 =====
-    function sortBars(list, mode) {
-        const arr = list.slice();
-        if (mode === 'award') {
-            // 獲獎排最前，其次私心推薦、脆友推薦，同分維持原順序
-            const score = b => (hasAward(b) ? 4 : 0) + (b.special ? 2 : 0) + (isFriend(b) ? 1 : 0);
-            arr.sort((a, b) => score(b) - score(a) || a._id - b._id);
-        } else if (mode === 'rating') {
-            // 有評分的排前面，評分同分再比評論數；無評分者維持原順序墊底
-            arr.sort((a, b) => (b.rating || 0) - (a.rating || 0) || (b.ratingCount || 0) - (a.ratingCount || 0) || a._id - b._id);
-        } else if (mode === 'price-asc') {
-            // 未標價位者墊底
-            arr.sort((a, b) => (a.price || 99) - (b.price || 99) || a._id - b._id);
-        } else if (mode === 'name') {
-            arr.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'));
-        }
-        return arr;
-    }
-
-    // ===== 卡片 =====
-    function renderCard(b) {
-        const badges = [];
-        if (b.special) badges.push('<span class="special-badge">⭐ 私心推薦</span>');
-        if (hasAward(b)) badges.push('<span class="award-badge">🏆 獲獎名店</span>');
-
-        const infoParts = [b.city + (b.district ? ' ' + b.district : ''), b.type, b.style].filter(Boolean);
-        const priceHtml = b.price ? ` <span class="price">${'$'.repeat(b.price)}<span class="off">${'$'.repeat(3 - b.price)}</span></span>` : '';
-
-        const tags = (b.purpose || '').split('或').filter(Boolean).map(t => `<span class="tag">${t.trim()}</span>`);
-        const note = b.note || '';
-        if (note.includes('日本調酒師')) tags.push('<span class="tag tag-highlight">🇯🇵 日本調酒師</span>');
-        if (note.includes('茶') || (b.style || '').includes('茶')) tags.push('<span class="tag">🍵 茶酒</span>');
-        if (isFriend(b)) tags.push('<span class="tag tag-friend">🧡 脆友推薦</span>');
-        if (hasAward(b)) tags.push(...b.awards.map(a => `<span class="tag tag-award">🏆 ${esc(a)}</span>`));
-
-        const details = [];
-        if (b.rating) details.push(`<span><span class="rating">★ ${b.rating}</span>${b.ratingCount ? ` (${b.ratingCount.toLocaleString()} 則評論)` : ''}</span>`);
-        if (b.hours) details.push(`<span>🕘 ${esc(b.hours)}</span>`);
-        if (b.address) details.push(`<span>📍 ${esc(b.address)}</span>`);
-        if (b.phone) details.push(`<span>☎️ ${esc(b.phone)}</span>`);
-
-        return `
-            <div class="bar-card" data-id="${b._id}" tabindex="0" role="button" aria-label="查看 ${esc(b.name)} 詳細資訊">
-                ${badges.length ? `<div class="badge-row">${badges.join('')}</div>` : ''}
-                <div class="bar-name">${esc(b.name)}</div>
-                <div class="bar-info">${infoParts.map(esc).join(' | ')}${priceHtml}</div>
-                <div class="bar-tags">${tags.join('')}</div>
-                ${note ? `<div class="bar-note">${esc(note)}</div>` : '<div class="bar-note" style="border:none;padding:0;"></div>'}
-                ${details.length ? `<div class="bar-details">${details.join('')}</div>` : ''}
-                <div class="bar-actions">
-                    <span class="btn">ℹ️ 詳細資訊</span>
-                    <a class="btn btn-ghost" href="https://www.google.com/maps/search/?api=1&query=${mapQuery(b)}" target="_blank" rel="noopener">🗺️ 導航</a>
-                </div>
-            </div>`;
-    }
-
-    // ===== 詳細頁 =====
-    function openDetail(id) {
-        const b = BARS[id];
-        if (!b) return;
-
-        const meta = [b.city + (b.district ? ' ' + b.district : ''), b.type, b.style].filter(Boolean).map(esc).join('｜');
-        const priceHtml = b.price ? `　<span class="price">${'$'.repeat(b.price)}<span class="off">${'$'.repeat(3 - b.price)}</span></span>` : '';
-
-        const rows = [];
-        if (b.rating) rows.push(['Google 評分', `<span style="color:#f5c518">★ ${b.rating}</span>${b.ratingCount ? `　${b.ratingCount.toLocaleString()} 則評論` : ''}`]);
-        if (b.hours) rows.push(['營業時間', esc(b.hours)]);
-        if (b.address) rows.push(['地址', esc(b.address)]);
-        if (b.phone) rows.push(['電話', `<a href="tel:${esc(b.phone.replace(/[^0-9+]/g, ''))}" style="color:#ccc">${esc(b.phone)}</a>`]);
-        if (b.purpose) rows.push(['適合場合', esc(b.purpose)]);
-
-        const tags = [];
-        if (b.special) tags.push('<span class="special-badge">⭐ 私心推薦</span>');
-        if (isFriend(b)) tags.push('<span class="tag tag-friend">🧡 脆友推薦</span>');
-        if ((b.note || '').includes('日本調酒師')) tags.push('<span class="tag tag-highlight">🇯🇵 日本調酒師</span>');
-
-        modalContent.innerHTML = `
-            <h2 class="modal-title" id="modalTitle">${esc(b.name)}</h2>
-            <div class="modal-meta">${meta}${priceHtml}</div>
-            ${tags.length ? `<div class="bar-tags">${tags.join('')}</div>` : ''}
-            ${b.note ? `<div class="modal-note">${esc(b.note)}</div>` : ''}
-            ${hasAward(b) ? `<ul class="modal-awards">${b.awards.map(a => `<li>🏆 ${esc(a)}</li>`).join('')}</ul>` : ''}
-            ${rows.length ? `<dl class="modal-rows">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : ''}
-            <div class="modal-section-label">地圖位置</div>
-            <iframe class="modal-map" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
-                    title="${esc(b.name)} 地圖" src="https://maps.google.com/maps?q=${mapQuery(b)}&z=16&output=embed"></iframe>
-            <div class="modal-actions">
-                <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${mapQuery(b)}" target="_blank" rel="noopener">🗺️ 在 Google Maps 開啟</a>
-                ${b.phone ? `<a class="btn btn-ghost" href="tel:${esc(b.phone.replace(/[^0-9+]/g, ''))}">☎️ 撥打電話</a>` : ''}
-            </div>`;
-
-        overlay.hidden = false;
-        document.body.style.overflow = 'hidden';
-        document.getElementById('modalClose').focus();
-    }
-
-    function closeDetail() {
-        overlay.hidden = true;
-        modalContent.innerHTML = '';   // 停掉 iframe 載入
-        document.body.style.overflow = '';
-    }
-
-    grid.addEventListener('click', e => {
-        if (e.target.closest('a')) return;          // 導航連結不觸發詳細頁
-        const card = e.target.closest('.bar-card');
-        if (card) openDetail(Number(card.dataset.id));
-    });
-    grid.addEventListener('keydown', e => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        const card = e.target.closest('.bar-card');
-        if (card) { e.preventDefault(); openDetail(Number(card.dataset.id)); }
-    });
-    document.getElementById('modalClose').addEventListener('click', closeDetail);
-    overlay.addEventListener('click', e => { if (e.target === overlay) closeDetail(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) closeDetail(); });
-
-    // ===== 篩選與渲染 =====
-    function update() {
-        const d = districtSelect.value;
-        const p = document.getElementById('purposeFilter').value;
-        const t = document.getElementById('typeFilter').value;
-        const pr = document.getElementById('priceFilter').value;
-        const sort = document.getElementById('sortFilter').value;
-        const q = document.getElementById('searchInput').value.trim().toLowerCase();
-
-        const filtered = BARS.filter(b => {
-            const note = b.note || '';
-            const matchCity = currentCity === 'all' || b.city === currentCity;
-            const matchDistrict = d === 'all' || b.district === d;
-            const matchPurpose = p === 'all' || (b.purpose || '').includes(p) || (p === '約會' && note.includes('約會'));
-            const matchType = t === 'all' ||
-                (t === '日本調酒師' && note.includes('日本調酒師')) ||
-                (t === '下午' && note.includes('下午')) ||
-                (t === '便宜' && (note.includes('便宜') || b.price === 1)) ||
-                (t === '獲獎' && hasAward(b)) ||
-                (t === '脆友' && isFriend(b)) ||
-                (b.type || '').includes(t);
-            const matchPrice = pr === 'all' || b.price === Number(pr);
-            const haystack = [b.name, note, b.city, b.district, b.style, ...(b.awards || [])].filter(Boolean).join(' ').toLowerCase();
-            const matchSearch = !q || haystack.includes(q);
-            return matchCity && matchDistrict && matchPurpose && matchType && matchPrice && matchSearch;
-        });
-
-        const sorted = sortBars(filtered, sort);
-        const scope = currentCity === 'all' ? '全台' : currentCity;
-        countDisplay.innerText = `${scope}｜搜尋到 ${sorted.length} 間適合的酒吧`;
-        grid.innerHTML = sorted.length
-            ? sorted.map(renderCard).join('')
-            : '<div class="empty">找不到符合條件的酒吧，換個條件試試 🍸</div>';
-    }
-
-    document.getElementById('subtitle').innerText = `全台 ${BARS.length} 間酒友、脆友、老酒鬼推薦清單`;
-    renderCityNav();
-    updateDistrictOptions();
-    document.querySelectorAll('select, input').forEach(el => el.addEventListener('input', update));
-    update();
-</script>
+<script src="app.js"></script>
 </body>
 </html>
