@@ -209,6 +209,23 @@ const BARS = [
   {name: "噶瑪蘭威士忌酒吧", city: "台北市", district: "中山區", type: "經典", purpose: "聚會或一個人", style: "台灣威士忌品牌吧", address: "台北市中山區南京東路二段1號2樓", hours: "19:00–01:00", lat: 25.051943, lng: 121.533935, note: "噶瑪蘭威士忌的品牌酒吧。"},
   {name: "獨角落 Do Bar", city: "台北市", district: "大同區", type: "特調", purpose: "聚會或一個人", address: "台北市大同區長安西路162號", hours: "18:30–00:00", lat: 25.051395, lng: 121.514707, note: "大同區長安西路上的酒吧。"},
   {name: "新串 New Trend 中山店", city: "台北市", district: "大同區", type: "啤酒", purpose: "聚會", style: "串燒配酒", address: "台北市大同區南京西路18巷6弄10號1樓", hours: "17:30–00:00", lat: 25.052025, lng: 121.519781, note: "中山商圈的串燒店，適合配酒。"},
+  {name: "Intention", city: "台北市", district: "大安區", type: "特調", purpose: "聚會或一個人", address: "台北市大安區敦化南路一段219號2樓", hours: "17:00–00:00", lat: 25.042096, lng: 121.549129},
+  {name: "D Town by A Train", city: "台北市", district: "大安區", type: "特調", purpose: "聚會或一個人", address: "台北市大安區忠孝東路四段49巷2號2樓", hours: "18:00–01:30", lat: 25.043006, lng: 121.5453},
+  {name: "啜飲室 大安", city: "台北市", district: "大安區", type: "啤酒", purpose: "聚會", style: "精釀啤酒", address: "台北市大安區仁愛路四段27巷34號", hours: "16:00–23:30", lat: 25.039827, lng: 121.545206},
+  {name: "Zoom Inn", city: "台北市", district: "大安區", type: "特調", purpose: "聚會或一個人", address: "台北市大安區和平東路三段68之6號", hours: "18:00–01:30"},
+  {name: "Yoh 曜日義式餐酒館", city: "台北市", district: "大安區", type: "特調", purpose: "聚會", style: "義式餐酒館", address: "台北市大安區仁愛路四段345巷15弄10號", hours: "12:00–21:00", lat: 25.038931, lng: 121.554612},
+  {name: "Ounce", city: "台北市", district: "大安區", type: "經典", purpose: "聚會或一個人", address: "台北市大安區信義路二段190號2樓", hours: "18:00–02:00", lat: 25.033818, lng: 121.528633},
+  {name: "後院", city: "台北市", district: "大安區", type: "特調", purpose: "聚會或一個人", address: "台北市大安區安和路二段23巷4號", hours: "19:00–02:00", lat: 25.032099, lng: 121.552902},
+  {name: "無向 Bar Without", city: "台北市", district: "大安區", type: "特調", purpose: "聚會或一個人", address: "台北市大安區安和路二段27號", hours: "19:00–01:30", lat: 25.030814, lng: 121.552379},
+  {name: "啜飲室 Landmark", city: "台北市", district: "信義區", type: "啤酒", purpose: "聚會", style: "精釀啤酒", address: "台北市信義區忠孝東路五段68號", hours: "17:00–23:30", lat: 25.041069, lng: 121.565615},
+  {name: "WHEE! 下來玩", city: "台北市", district: "信義區", type: "特調", purpose: "聚會", address: "台北市信義區松仁路89號B2", lat: 25.034362, lng: 121.568405},
+  {name: "Bar Halfway There 半路酒吧", city: "台北市", district: "大安區", type: "特調", purpose: "聚會或一個人", address: "台北市大安區文昌街24號2樓", lat: 25.032532, lng: 121.5534},
+  {name: "小後苑 Backyard Jr.", city: "台北市", district: "信義區", type: "經典特調", purpose: "聚會", address: "台北市信義區松壽路9號3樓", hours: "11:00–02:00", lat: 25.035938, lng: 121.561731},
+  {name: "HALEAKALA 夏威夷酒吧餐廳", city: "台北市", district: "信義區", type: "特調", purpose: "聚會", style: "夏威夷主題", address: "台北市信義區松仁路28號4樓", hours: "11:00–21:30", lat: 25.034362, lng: 121.568405},
+  {name: "GUMGUM Beer & Wings 雞翅啤酒吧 信義店", city: "台北市", district: "信義區", type: "啤酒", purpose: "聚會", style: "雞翅×啤酒", address: "台北市信義區光復南路473巷11弄38號", hours: "11:30–15:00、17:30–22:30", lat: 25.034003, lng: 121.558176},
+  {name: "Sleep No More", city: "台北市", district: "信義區", type: "特調", purpose: "聚會", address: "台北市信義區松壽路26號", hours: "11:00–03:00", lat: 25.035938, lng: 121.561731},
+  {name: "Range 鐵板精肉餐酒館", city: "台北市", district: "信義區", type: "特調", purpose: "聚會", style: "鐵板精肉餐酒館", address: "台北市信義區忠孝東路五段31巷18弄15號", hours: "17:30–00:30", lat: 25.041633, lng: 121.566441},
+  {name: "Hooters 信義A13", city: "台北市", district: "信義區", type: "啤酒", purpose: "聚會", style: "美式運動餐廳", address: "台北市信義區松仁路58號14樓", hours: "11:00–01:00", lat: 25.034362, lng: 121.568405},
 
   // ───── 新北市 ─────
   {name: "多崎作 — The Ferrymen", city: "新北市", district: "淡水區", type: "特調", purpose: "聚會或一個人", note: "淡水人推薦｜便宜"},
@@ -237,6 +254,23 @@ const BARS = [
   {name: "Le Puzzle Creperie & Bar 法式薄餅小酒館", city: "新北市", district: "板橋區", type: "特調", purpose: "聚會或一個人", style: "法式薄餅小酒館", address: "新北市板橋區文化路一段285巷2弄30號", hours: "10:30–19:00", lat: 25.019627, lng: 121.464041, note: "法式薄餅結合小酒館，白天營業。"},
   {name: "90's Dining Bar 酒食人餐酒館", city: "新北市", district: "板橋區", type: "特調", purpose: "聚會", address: "新北市板橋區中山路一段124號", hours: "18:00–00:00", lat: 25.011048, lng: 121.463791, note: "板橋中山路上的餐酒館。"},
   {name: "葵餐酒館 Aoi bistro", city: "新北市", district: "板橋區", type: "特調", purpose: "聚會", style: "精緻餐酒館", address: "新北市板橋區中山路一段88號", hours: "18:00–00:00", lat: 25.011048, lng: 121.463791, note: "板橋的精緻餐酒館。"},
+  {name: "晨時 MorningTimeBar", city: "新北市", district: "中和區", type: "特調", purpose: "聚會或一個人", address: "新北市中和區中山路二段2巷45弄3號", hours: "09:00–20:00", lat: 25.006723, lng: 121.502077},
+  {name: "語你。酒食製作", city: "新北市", district: "中和區", type: "特調", purpose: "聚會", address: "新北市中和區信義街69號", lat: 24.988477, lng: 121.511438},
+  {name: "Catmint Cafe & Bar 貓草餐酒館", city: "新北市", district: "中和區", type: "特調", purpose: "聚會", style: "咖啡×餐酒館", address: "新北市中和區安平路190號", lat: 24.999352, lng: 121.513313},
+  {name: "Bar千手 Bar Senju", city: "新北市", district: "中和區", type: "特調", purpose: "聚會或一個人", address: "新北市中和區安平路109號", hours: "20:00–01:00", lat: 24.999352, lng: 121.513313},
+  {name: "賈Bar", city: "新北市", district: "中和區", type: "特調", purpose: "聚會", address: "新北市中和區圓通路173號A室", hours: "12:00–14:00、17:00–20:00", lat: 24.992776, lng: 121.495024},
+  {name: "BIBO日咖夜酒", city: "新北市", district: "中和區", type: "特調", purpose: "聚會或一個人", style: "日咖夜酒", address: "新北市中和區景新街182號1樓", hours: "16:00–23:30", lat: 24.986716, lng: 121.514441},
+  {name: "微光 Moonlit", city: "新北市", district: "淡水區", type: "特調", purpose: "聚會或一個人", address: "新北市淡水區北新路182巷21號B1", lat: 25.177458, lng: 121.448555},
+  {name: "微醺吉他 Live Bar 民歌音樂酒吧", city: "新北市", district: "淡水區", type: "特調", purpose: "聚會", style: "民歌音樂酒吧", address: "新北市淡水區中正路7號2樓", lat: 25.174819, lng: 121.432094},
+  {name: "樹下餐酒", city: "新北市", district: "淡水區", type: "特調", purpose: "聚會", address: "新北市淡水區北新路182巷20號", hours: "20:00–03:00", lat: 25.177458, lng: 121.448555},
+  {name: "Test No.100", city: "新北市", district: "淡水區", type: "特調", purpose: "聚會或一個人", address: "新北市淡水區水源街二段100號1樓", hours: "20:00–02:00", lat: 25.17651, lng: 121.459884},
+  {name: "Bar Salix 煽 in RC", city: "新北市", district: "淡水區", type: "特調", purpose: "聚會或一個人", address: "新北市淡水區中正路233之2號3樓", hours: "17:00–00:00"},
+  {name: "Unicorn Cafe & Bar", city: "新北市", district: "新莊區", type: "特調", purpose: "聚會或一個人", style: "咖啡×酒吧", address: "新北市新莊區思源路482號", hours: "14:00–00:00", lat: 25.039428, lng: 121.460102},
+  {name: "Answer 安森", city: "新北市", district: "新莊區", type: "特調", purpose: "聚會", address: "新北市新莊區中正路490號", hours: "18:00–02:00", lat: 25.021201, lng: 121.410513},
+  {name: "Sipping Bistro 啜飲餐酒館", city: "新北市", district: "新莊區", type: "特調", purpose: "聚會", address: "新北市新莊區中正路603號", hours: "11:00–14:00、17:30–21:00", lat: 25.021201, lng: 121.410513},
+  {name: "The I-tipsy 愛微醺餐酒館", city: "新北市", district: "新莊區", type: "特調", purpose: "聚會", address: "新北市新莊區中正路879號", hours: "19:40–04:00", lat: 25.021201, lng: 121.410513},
+  {name: "Night&Night Lounge Bar", city: "新北市", district: "新莊區", type: "特調", purpose: "聚會", address: "新北市新莊區新莊路395號", hours: "21:00–05:00", lat: 25.032737, lng: 121.442603},
+  {name: "H&W Restaurant and Bar", city: "新北市", district: "新店區", type: "特調", purpose: "聚會", address: "新北市新店區北新路三段65巷5號", hours: "18:00–01:00", lat: 24.981056, lng: 121.540485},
 
   // ───── 基隆市 ─────
   {name: "Bad Mama 黑媽", city: "基隆市", district: "仁愛區", type: "經典特調", purpose: "聚會或一個人", style: "百年老宅、澳式酒吧餐館", price: 2, address: "基隆市仁愛區孝一路34巷5號", phone: "02-2425-6262", hours: "週二至週四 18:00–01:00（週日一休）", note: "150年紅磚古厝改造，吧台以整艘廢棄漁船打造，被多家媒體譽為世界級設計酒吧，兼營異國料理與花式調酒。"},
@@ -248,6 +282,10 @@ const BARS = [
   {name: "人參民謠小屋 Ginsengcafe Bar", city: "基隆市", district: "仁愛區", type: "特調", purpose: "聚會或一個人", style: "民謠 OPEN MIC", price: 2, address: "基隆市仁愛區孝一路34巷2號2樓", hours: "週一至四 19:00–00:00；週五六至02:00；週日至01:00", note: "以 OPEN MIC 現場演唱為特色的民謠小屋，每杯調酒都有自己的故事。"},
   {name: "Dope Bar", city: "基隆市", district: "仁愛區", type: "特調", purpose: "聚會或一個人", style: "船屋概念、港邊酒吧", price: 2, address: "基隆市義一路20巷1號", hours: "19:00–03:00", note: "以船屋為概念的港邊酒吧，呼應基隆的海港性格，特色雞尾酒選擇多。"},
   {name: "啤咖酒", city: "基隆市", district: "仁愛區", type: "特調", purpose: "聚會或一個人", style: "七十年老屋、音樂咖啡調酒", price: 2, address: "基隆市孝一路23巷3弄5號", hours: "週一、日 18:00–00:00；週二四 18:30–01:30；週五六 20:00–01:30（週三休）", note: "開在七十年老房子裡的複合空間，白天咖啡、夜裡調酒，配上老屋氛圍與音樂。"},
+  {name: "樂海海鮮碳烤Club", city: "基隆市", district: "安樂區", type: "啤酒", purpose: "聚會", style: "海鮮碳烤", address: "基隆市安樂區湖海路二段166號", hours: "14:00–21:30", lat: 25.165838, lng: 121.706404, note: "補上基隆安樂區的空白。"},
+  {name: "夏隆咖啡 Shalom Cafe", city: "基隆市", district: "信義區", type: "特調", purpose: "聚會或一個人", style: "咖啡×酒吧", address: "基隆市信義區義六路38號", hours: "13:00–21:00", lat: 25.130809, lng: 121.750663, note: "補上基隆信義區的空白。"},
+  {name: "媽媽樂酒吧 Motherfunk Studio", city: "基隆市", district: "仁愛區", type: "特調", purpose: "聚會", address: "基隆市仁愛區劉銘傳路6巷25之25號"},
+  {name: "享喝吧", city: "基隆市", district: "中正區", type: "特調", purpose: "聚會", address: "基隆市中正區信一路156號", lat: 25.130624, lng: 121.744644, note: "補上基隆中正區的空白。"},
 
   // ───── 桃園市 ─────
   {name: "陸小曼 Lounge Bar", city: "桃園市", district: "中壢區", type: "經典特調", purpose: "聚會", style: "老牌 Lounge Bar", price: 2, address: "桃園市中壢區中央西路一段76巷33號", phone: "03-426-1212", hours: "21:00–04:00", lat: 24.958561, lng: 121.221618, note: "中壢開業超過十年的老牌酒吧，以經典調酒為底變化出多樣特調，設有飛鏢機與遊戲機台，平日也常座無虛席。"},
@@ -305,9 +343,11 @@ const BARS = [
 
   // ───── 苗栗縣 ─────
   {name: "上癮餐酒館 Obsession Bar", city: "苗栗縣", district: "竹南鎮", type: "特調", purpose: "聚會", style: "黑色貨櫃屋餐酒館", price: 2, address: "苗栗縣竹南鎮公北一路151號", phone: "0901-193-949", hours: "17:00–02:00", lat: 24.691715, lng: 120.890581, note: "竹南運動公園旁醒目的黑色貨櫃屋餐酒館，以浮誇神燈調酒與乾燥花夢幻雞尾酒聞名，週六有駐唱，竹南頭份一帶人氣酒吧。"},
-  {name: "紳OWL餐酒館", city: "苗栗縣", district: "頭份市", type: "經典特調", purpose: "聚會", style: "質感餐酒館", price: 2, hours: "營業至02:00", note: "頭份在地人私藏的質感餐酒館，空間寬敞、燈光柔和，Old Fashioned 等經典調酒水準被評為頭份數一數二。"},
+  {name: "紳OWL餐酒館", city: "苗栗縣", district: "頭份市", type: "經典特調", purpose: "聚會", style: "質感餐酒館", price: 2, address: "苗栗縣頭份市公園二街175號", hours: "18:00–00:00", note: "頭份在地人私藏的質感餐酒館，空間寬敞、燈光柔和，Old Fashioned 等經典調酒水準被評為頭份數一數二。"},
   {name: "入森餐酒館", city: "苗栗縣", district: "苗栗市", type: "特調", purpose: "聚會或一個人", style: "質感餐酒館、客製調酒", price: 2, address: "苗栗縣苗栗市英才路215號", phone: "0955-105-266", hours: "19:00–02:00（排休不定）", lat: 24.577527, lng: 120.819846, note: "苗栗市近年最受討論的質感酒吧，空間與座位氛圍佳，提供客製化調酒。"},
   {name: "D&F 音樂餐廳", city: "苗栗縣", district: "苗栗市", type: "經典特調", purpose: "聚會", style: "音樂餐廳、運動賽事轉播", price: 1, address: "苗栗縣苗栗市自治路453號", phone: "037-372-921", hours: "20:00–03:00（有賽事轉播時延長）", lat: 24.570842, lng: 120.816521, note: "苗栗車站附近的老牌音樂餐廳，下班放鬆小酌的去處，有大螢幕轉播體育賽事，遇重要賽事會營業到清晨。"},
+  {name: "酒酷Jo Ku餐廳", city: "苗栗縣", district: "竹南鎮", type: "特調", purpose: "聚會", address: "苗栗縣竹南鎮開元路559號", hours: "10:00–01:00", lat: 24.67896, lng: 120.862946},
+  {name: "擺渡人bar Ferry Man Bar", city: "苗栗縣", district: "竹南鎮", type: "特調", purpose: "聚會或一個人", address: "苗栗縣竹南鎮和平街76號", hours: "19:30–02:00", lat: 24.685395, lng: 120.877614},
 
   // ───── 台中市 ─────
   {name: "Vender 販", city: "台中市", district: "西區", type: "特調", purpose: "聚會或一個人", style: "Speakeasy、南洋風", price: 3, address: "台中市西區五權西四街118號", phone: "04-2372-5875", hours: "週日至四 18:00–02:00、週五六至03:00", lat: 24.135566, lng: 120.662498, awards: ["Asia's 50 Best Bars 2026 #14（連三年台灣最佳）","World's 50 Best Bars 2025 #74"], note: "隱身美術館綠園道旁巨型販賣機後的話題酒吧，新加坡籍主理人以創意調酒搭配肉骨茶等星馬料理，台中唯一連年入選亞洲五十大酒吧的名店。"},
@@ -336,17 +376,33 @@ const BARS = [
   {name: "Tipsy room 酉浥室", city: "台中市", district: "西區", type: "經典", purpose: "聚會或一個人", style: "經典調酒為主", address: "台中市西區向上路一段260號", phone: "0905-301-098", hours: "18:00–02:00", lat: 24.146708, lng: 120.654919, note: "以經典調酒為主，並有專為台中設計的特色酒單。"},
   {name: "DRINKTOPIA", city: "台中市", district: "南屯區", type: "特調", purpose: "聚會", style: "時尚簡約、烏托邦主題", address: "台中市南屯區大墩十二街262號", phone: "0972-062-960", hours: "20:00–02:00（週日休）", lat: 24.149723, lng: 120.645014, note: "以烏托邦為主題的時尚簡約餐酒館，補上台中南屯區的空白。"},
   {name: "FRANK Taichung", city: "台中市", district: "西屯區", type: "特調", purpose: "聚會", style: "高空酒吧、露天公園概念", address: "台中市西屯區河南路三段120號7樓", phone: "0958-023-838", hours: "20:00–03:00", lat: 24.171182, lng: 120.659066, note: "可俯瞰台中夜景的高空酒吧，露天區融入公園概念。"},
+  {name: "NCS不熟人Bar", city: "台中市", district: "西區", type: "特調", purpose: "聚會或一個人", address: "台中市西區民權路161之1號", hours: "21:00–03:00"},
+  {name: "Rolling Bar 滾BAR", city: "台中市", district: "西區", type: "特調", purpose: "聚會", address: "台中市西區館前路77號5樓", hours: "18:00–00:00", lat: 24.153767, lng: 120.663778},
+  {name: "NK.restaurant", city: "台中市", district: "西屯區", type: "特調", purpose: "聚會", address: "台中市西屯區大容東街66號", hours: "18:00–01:30", lat: 24.158619, lng: 120.650054},
+  {name: "六月螢火 Yakitori & Bar", city: "台中市", district: "西區", type: "啤酒", purpose: "聚會", style: "串燒×酒吧", address: "台中市西區健行路1015號", hours: "18:00–02:00", lat: 24.157905, lng: 120.664078},
+  {name: "CRU酒窖 CRU cave a vin", city: "台中市", district: "西屯區", type: "經典", purpose: "聚會或一個人", style: "酒窖", address: "台中市西屯區惠來路一段171號", hours: "19:30–00:00", lat: 24.158841, lng: 120.638908},
+  {name: "ECT bistro", city: "台中市", district: "北屯區", type: "特調", purpose: "聚會", address: "台中市北屯區敦富五街77號", hours: "20:00–04:00", lat: 24.187179, lng: 120.706071},
+  {name: "Beta brunch & bistro 貝塔", city: "台中市", district: "西屯區", type: "特調", purpose: "聚會", address: "台中市西屯區市政北二路282號", hours: "18:00–02:00", lat: 24.165123, lng: 120.633942},
+  {name: "Hidden Eight 映景觀餐廳", city: "台中市", district: "西屯區", type: "經典特調", purpose: "聚會", style: "飯店 8 樓景觀", price: 3, address: "台中市西屯區台灣大道四段610號8F", hours: "11:30–14:30、17:00–01:00", lat: 24.179423, lng: 120.623098},
 
   // ───── 彰化縣 ─────
   {name: "GUTS Cocktail Bar 蓋茲", city: "彰化縣", district: "彰化市", type: "經典特調", purpose: "聚會或一個人", style: "茶酒、專業雞尾酒吧", price: 2, address: "彰化縣彰化市吉祥街3號", phone: "0928-962-999", hours: "週日至四 18:30–01:00、週五六至02:00", lat: 24.078365, lng: 120.537704, note: "彰化市代表性專業調酒吧，以 TWG 茶葉特製茶酒（皇家婚禮、經典1837等）聞名，一個人小酌也自在。"},
   {name: "勝豐吧 Home Bar Lukang", city: "彰化縣", district: "鹿港鎮", type: "啤酒", purpose: "聚會或一個人", style: "百年老屋、精釀啤酒", price: 2, address: "彰化縣鹿港鎮民族路131號", phone: "04-7785232", hours: "18:00–00:00（週四休）", lat: 24.055694, lng: 120.43628, note: "由許家後代與「鹿港囝仔」團隊改造百年老屋而成的精釀啤酒吧，供各國精釀、威士忌並提供老屋導覽，鹿港地方創生代表店家。"},
   {name: "老屋舊時光茶酒所", city: "彰化縣", district: "彰化市", type: "特調", purpose: "聚會", style: "老宅、茶酒、音樂", price: 1, note: "彰化南瑤宮商圈的老宅改建小酒館，結合調酒、茶飲、炸物與音樂，彰化夜貓族的人氣宵夜小酌據點。"},
   {name: "羅得利餐酒館 Ro-Tary Music Bistro", city: "彰化縣", district: "彰化市", type: "特調", purpose: "聚會", style: "低調奢華、Live Band 駐唱", price: 2, address: "彰化縣彰化市金馬路三段386號", phone: "04-725-9999", hours: "週五六 18:00–02:00；週一三四日 18:00–01:00（週二休）", lat: 24.084052, lng: 120.53075, note: "外觀低調、內部氣氛奢華的餐酒館，週五六有駐唱與 Live Band。招牌萬象水餃與炫炮 Shot，可容納約 45 人，適合朋友聚會。"},
+  {name: "町參酒食", city: "彰化縣", district: "彰化市", type: "特調", purpose: "聚會", address: "彰化縣彰化市吉祥街8巷11號", hours: "17:00–23:00", lat: 24.078712, lng: 120.538035},
+  {name: "Paul Bar 保羅餐酒館", city: "彰化縣", district: "彰化市", type: "特調", purpose: "聚會", address: "彰化縣彰化市大埔路148號", hours: "18:00–00:00", lat: 24.059467, lng: 120.544616},
+  {name: "Apple Hank", city: "彰化縣", district: "員林市", type: "特調", purpose: "聚會", address: "彰化縣員林市南昌路23號", hours: "20:00–00:00", lat: 23.954554, lng: 120.572005},
+  {name: "Light up cafe & bar", city: "彰化縣", district: "彰化市", type: "特調", purpose: "聚會或一個人", style: "咖啡×酒吧", address: "彰化縣彰化市陳稜路228號", hours: "14:00–22:00", lat: 24.079404, lng: 120.541439},
+  {name: "Cyber Pub", city: "彰化縣", district: "彰化市", type: "經典", purpose: "聚會", address: "彰化縣彰化市公園路一段58號", lat: 24.075211, lng: 120.550738},
 
   // ───── 南投縣 ─────
   {name: "Michael Bar", city: "南投縣", district: "南投市", type: "經典", purpose: "一個人", style: "老派酒吧、爵士", price: 2, address: "南投縣南投市大同街148號", phone: "049-2238123", hours: "19:00–02:00", lat: 23.909139, lng: 120.687699, note: "自1990年營業至今的南投市老酒吧，木質吧檯、昏黃燈光配爵士樂，延續創始人 Michael 的經典調酒，南投低調老酒吧代表。"},
   {name: "漫。島美式餐酒館 ChillBar", city: "南投縣", district: "埔里鎮", type: "經典特調", purpose: "聚會", style: "美式餐酒館、煙燻烤肉", price: 2, address: "南投縣埔里鎮中山路二段436號", phone: "0988-664-331", hours: "平日 17:00–01:00、週五六 15:00 起（週四休）", lat: 23.970486, lng: 120.975041, note: "埔里少見的美式餐酒館，招牌島主特調與煙燻肉排，英倫雅痞氛圍越夜越熱鬧，埔里夜晚小酌首選之一。"},
   {name: "家竹 Homebamboo", city: "南投縣", district: "竹山鎮", type: "特調", purpose: "聚會或一個人", style: "竹山在地專業調酒吧", price: 2, address: "南投縣竹山鎮集山路二段1149號", lat: 23.772393, lng: 120.7071, note: "竹山少見的專業調酒吧，在地評價極高，是南投山城一帶深夜放鬆的據點。"},
+  {name: "海神殿 PUB & SPORT BAR", city: "南投縣", district: "魚池鄉", type: "啤酒", purpose: "聚會", style: "運動酒吧", address: "南投縣魚池鄉東池村", hours: "18:00–23:00", lat: 23.897469, lng: 120.945583},
+  {name: "天首閣 紅茶．酒茶試驗所", city: "南投縣", district: "魚池鄉", type: "特調", purpose: "聚會或一個人", style: "日月潭紅茶入酒", address: "南投縣魚池鄉中正路58號", hours: "16:00–23:00", lat: 23.842874, lng: 120.927726},
+  {name: "蔡氏釀酒", city: "南投縣", district: "草屯鎮", type: "啤酒", purpose: "聚會", style: "歐式釀酒觀光工廠", address: "南投縣草屯鎮碧山路1146號", hours: "09:00–18:00", lat: 23.977896, lng: 120.68598},
 
   // ───── 雲林縣 ─────
   {name: "艾澤拉斯小酒館", city: "雲林縣", district: "斗六市", type: "經典特調", purpose: "聚會或一個人", style: "客製調酒、在地食材", price: 2, address: "雲林縣斗六市內環路772號", phone: "0925-006-289", hours: "週日至四 20:00–02:00、週五六至03:00（週二休）", lat: 23.714236, lng: 120.546903, note: "斗六代表性調酒吧，致力將雲林在地食材融入雞尾酒並提供客製專屬調酒，調酒師會細心解說風味層次，新手友善。"},
@@ -416,6 +472,12 @@ const BARS = [
   {name: "Cosby Saloon", city: "台南市", district: "北區", type: "經典", purpose: "聚會", style: "美式沙龍酒吧", address: "台南市北區公園路128號1F", hours: "18:00–00:00", lat: 23.012142, lng: 120.211354, note: "台南北區的美式沙龍風酒吧。"},
   {name: "BlueMonk", city: "台南市", district: "中西區", type: "特調", purpose: "聚會或一個人", style: "深夜酒吧", address: "台南市中西區大德街103號", hours: "20:00–03:00", lat: 22.98777, lng: 120.195784, note: "台南中西區的深夜酒吧，營業到凌晨三點。"},
   {name: "Bark2 輕餐食酒館", city: "台南市", district: "中西區", type: "特調", purpose: "聚會", style: "輕餐酒館", address: "台南市中西區公園路33號", lat: 22.994982, lng: 120.205613, note: "台南中西區的輕餐酒館。"},
+  {name: "LOOK CAFE&BAR", city: "台南市", district: "東區", type: "特調", purpose: "聚會或一個人", style: "咖啡×酒吧", address: "台南市東區崇仁街72號", hours: "19:00–01:00", lat: 22.983784, lng: 120.22374},
+  {name: "Bar21 廿一酒吧", city: "台南市", district: "東區", type: "經典特調", purpose: "聚會", style: "飯店 5 樓", address: "台南市東區中華東路一段368號5樓", hours: "17:30–23:30", lat: 22.995547, lng: 120.234448},
+  {name: "HOUSE BAR", city: "台南市", district: "東區", type: "特調", purpose: "聚會或一個人", address: "台南市東區立德二路17號", hours: "21:00–02:00", lat: 22.975075, lng: 120.215416},
+  {name: "New MALIBU Bar 馬里布一店", city: "台南市", district: "東區", type: "特調", purpose: "聚會", address: "台南市東區衛民街18號", hours: "21:00–03:00", lat: 22.993029, lng: 120.209242},
+  {name: "2060 Space Bar 太空吧", city: "台南市", district: "東區", type: "特調", purpose: "聚會", style: "太空主題", address: "台南市東區東光路二段47號", hours: "08:00–17:00", lat: 22.996921, lng: 120.231623},
+  {name: "Bar Whisper", city: "台南市", district: "東區", type: "特調", purpose: "聚會或一個人", address: "台南市東區東寧路162號", hours: "20:00–02:00", lat: 22.992172, lng: 120.219731},
 
   // ───── 高雄市 ─────
   {name: "MALTAIL", city: "高雄市", district: "前金區", type: "經典特調", purpose: "聚會或一個人", style: "威士忌×調酒", price: 3, address: "高雄市前金區中華四路349之1號", phone: "07-2218086", hours: "20:00–02:00", awards: ["Asia's 50 Best Bars 2026 #68"], note: "由烈酒作家創立，一樓供應汲飲雞尾酒、二樓為威士忌與經典調酒，以單一麥芽威士忌重新詮釋亞洲風味，全預約制，高雄登上亞洲榜的代表酒吧。"},
@@ -448,6 +510,14 @@ const BARS = [
   {name: "紅瀰 Homie bistro & coffee", city: "高雄市", district: "鼓山區", type: "特調", purpose: "聚會", style: "咖啡×餐酒館", address: "高雄市鼓山區鼓山一路32之6號", hours: "17:30–04:00", note: "鼓山區的咖啡餐酒館，營業到凌晨四點。"},
   {name: "双黃 hhbar & cuisine", city: "高雄市", district: "苓雅區", type: "特調", purpose: "聚會", address: "高雄市苓雅區中興街172號", hours: "20:00–03:00", lat: 22.620446, lng: 120.306162, note: "苓雅區的餐酒館，營業到凌晨三點。"},
   {name: "眺吧餐酒館 The Lookout Bistro & Bar", city: "高雄市", district: "新興區", type: "特調", purpose: "聚會", style: "頂樓景觀餐酒館", address: "高雄市新興區中山一路14之26號RF樓", hours: "07:00–14:00、17:30–00:00", note: "位於頂樓的景觀餐酒館，早餐時段也營業。"},
+  {name: "食獻 Donburi & Bar", city: "高雄市", district: "左營區", type: "特調", purpose: "聚會或一個人", style: "丼飯×酒吧", address: "高雄市左營區正心街8號", hours: "17:30–21:30", lat: 22.664392, lng: 120.304076},
+  {name: "Roof．屋頂", city: "高雄市", district: "左營區", type: "特調", purpose: "聚會", address: "高雄市左營區立文路51號", hours: "18:00–02:00", lat: 22.681239, lng: 120.316735},
+  {name: "Jiu Gan 倘賣無", city: "高雄市", district: "左營區", type: "特調", purpose: "聚會或一個人", address: "高雄市左營區立文路48號", hours: "20:00–02:00", lat: 22.681239, lng: 120.316735},
+  {name: "Double Soul coffee & bistro", city: "高雄市", district: "左營區", type: "特調", purpose: "聚會", style: "咖啡×餐酒館", address: "高雄市左營區文育路1號", hours: "17:30–23:30", lat: 22.674844, lng: 120.315472},
+  {name: "Roma Roma Pizzeria & Bar", city: "高雄市", district: "左營區", type: "特調", purpose: "聚會", style: "披薩×酒吧", address: "高雄市左營區辛亥路115號", hours: "18:00–01:00", lat: 22.694429, lng: 120.301663},
+  {name: "LN_bar", city: "高雄市", district: "左營區", type: "特調", purpose: "聚會或一個人", address: "高雄市左營區文康路189號", hours: "20:00–02:00", lat: 22.673378, lng: 120.303831},
+  {name: "傳奇漢堡披薩 Legends Zuoying", city: "高雄市", district: "左營區", type: "啤酒", purpose: "聚會", style: "美式漢堡披薩", address: "高雄市左營區裕誠路273號", hours: "18:00–00:00", lat: 22.66692, lng: 120.301623},
+  {name: "Bar Horoyoi 穂露夜井", city: "高雄市", district: "左營區", type: "特調", purpose: "聚會或一個人", style: "日式", address: "高雄市左營區辛亥路125號", hours: "15:00–01:00", lat: 22.694429, lng: 120.301663},
 
   // ───── 屏東縣 ─────
   {name: "30M BAR", city: "屏東縣", district: "恆春鎮", type: "特調", purpose: "聚會或一個人", style: "海洋／潛水主題", price: 2, address: "屏東縣恆春鎮恆南路125巷6號", phone: "08-888-1129", hours: "20:00–02:00（週二休）", lat: 21.99587, lng: 120.743602, note: "恆春最具代表性的酒吧之一，老闆為職業潛水員，酒單緊扣海洋與環境保育主題，招牌有在地青龍糯米椒調製的「小青龍」。"},
@@ -455,6 +525,17 @@ const BARS = [
   {name: "如煙人文餐酒館", city: "屏東縣", district: "屏東市", type: "特調", purpose: "聚會", style: "日式居酒屋餐酒、眷村老屋", price: 2, address: "屏東縣屏東市勝義巷10號（勝利星村內）", phone: "08-7321527", hours: "週日至四 17:00–24:00、週五六至01:00（週一休）", lat: 22.67895, lng: 120.485352, note: "位於勝利星村日式老屋群中，宛如《華燈初上》場景的居酒屋餐酒館，日式定食搭配特色調酒，屏東市區最具話題的微醺去處。"},
   {name: "LAYBAR", city: "屏東縣", district: "屏東市", type: "特調", purpose: "聚會或一個人", style: "深夜餐酒館", price: 2, address: "屏東縣屏東市華正路55號", phone: "0938-537-662", hours: "20:00–04:00（最後點酒03:00）", lat: 22.685358, lng: 120.498986, note: "屏東市區營業到清晨的餐酒館，是當地少數能喝到很晚的選擇。"},
   {name: "騎士咬一口 Biker Bite", city: "屏東縣", district: "屏東市", type: "特調", purpose: "聚會", style: "美式重機主題", price: 2, address: "屏東縣屏東市逢甲商場22號", phone: "08-733-6763", hours: "18:00–00:00", note: "屏東市逢甲商場內的美式風格酒吧，重機主題裝潢，調酒與餐點選擇多元。"},
+  {name: "Sea Daze Liuqiu", city: "屏東縣", district: "琉球鄉", type: "特調", purpose: "聚會", style: "小琉球海島酒吧", address: "屏東縣琉球鄉肚仔坪路13號", hours: "16:00–00:00", lat: 22.349789, lng: 120.368258},
+  {name: "鈕扣倉庫", city: "屏東縣", district: "恆春鎮", type: "特調", purpose: "聚會", address: "屏東縣恆春鎮恆西路12之21號", hours: "至 01:30"},
+  {name: "小灣酒吧 墾丁凱撒大飯店", city: "屏東縣", district: "恆春鎮", type: "經典特調", purpose: "聚會", style: "飯店海灘酒吧", price: 3, address: "屏東縣恆春鎮墾丁路", hours: "15:00–23:00", lat: 21.936019, lng: 120.811042},
+  {name: "MOJITO在墾丁", city: "屏東縣", district: "恆春鎮", type: "特調", purpose: "聚會", address: "屏東縣恆春鎮墾丁路237號", lat: 21.936019, lng: 120.811042},
+  {name: "Sardine Kitchen & Bar 沙丁嶼餐酒館", city: "屏東縣", district: "恆春鎮", type: "特調", purpose: "聚會", address: "屏東縣恆春鎮墾丁路文化巷5號", lat: 21.944181, lng: 120.799098},
+  {name: "小琉球酒吧 HighBar 海壩-吧", city: "屏東縣", district: "琉球鄉", type: "特調", purpose: "聚會", address: "屏東縣琉球鄉相埔路77之3號", hours: "19:00–01:00"},
+  {name: "快樂白沙酒吧", city: "屏東縣", district: "恆春鎮", type: "特調", purpose: "聚會", style: "白沙灣海邊", address: "屏東縣恆春鎮白沙路31之2號", hours: "08:30–20:30"},
+  {name: "玩家燒烤啤酒吧", city: "屏東縣", district: "恆春鎮", type: "啤酒", purpose: "聚會", style: "燒烤×啤酒", address: "屏東縣恆春鎮大灣路20之1號", hours: "18:00–04:00"},
+  {name: "熱帶島嶼調酒吧", city: "屏東縣", district: "恆春鎮", type: "特調", purpose: "聚會", style: "熱帶島嶼風", address: "屏東縣恆春鎮墾丁路131之2號", hours: "19:00–00:00"},
+  {name: "大廳酒吧 The Lobby Bar 墾丁凱撒大飯店", city: "屏東縣", district: "恆春鎮", type: "經典特調", purpose: "聚會", style: "飯店大廳酒吧", price: 3, address: "屏東縣恆春鎮墾丁路6號", hours: "10:30–22:00", lat: 21.936019, lng: 120.811042},
+  {name: "小琉球雀爾思燒肉 Cheers Beer & Barbecue", city: "屏東縣", district: "琉球鄉", type: "啤酒", purpose: "聚會", style: "燒肉×啤酒", address: "屏東縣琉球鄉肚仔坪路20號", hours: "17:30–21:30", lat: 22.349789, lng: 120.368258},
 
   // ───── 宜蘭縣 ─────
   {name: "The Roof 190 星空酒吧", city: "宜蘭縣", district: "羅東鎮", type: "特調", purpose: "聚會", style: "飯店頂樓高空景觀", price: 2, address: "宜蘭縣羅東鎮站東路190號（村却國際溫泉酒店頂樓）", phone: "03-9057988", hours: "約 16:00–24:00", lat: 24.675906, lng: 121.77489, note: "位於羅東最高樓村却國際溫泉酒店頂樓，可360度眺望蘭陽平原夜景，被媒體譽為媲美曼谷高空酒吧，非房客低消300元。"},
@@ -483,6 +564,9 @@ const BARS = [
   {name: "麥麥小酒館", city: "花蓮縣", district: "花蓮市", type: "特調", purpose: "聚會或一個人", style: "夜市旁溫馨小酒館", price: 1, address: "花蓮縣花蓮市康樂街5-2號", hours: "週五六 20:00–03:00；週日 13:00–17:00、20:00–23:30", lat: 23.974055, lng: 121.614837, note: "東大門夜市旁的溫馨小酒館，逛完夜市可以順道過來續攤。"},
   {name: "愛玩客酒吧", city: "花蓮縣", district: "花蓮市", type: "特調", purpose: "聚會", style: "娛樂型酒吧、飛鏢卡拉OK", price: 1, address: "花蓮縣花蓮市和平路302-1號", phone: "03-831-5799", hours: "21:00–04:30（週五六 22:00 開門）", lat: 23.972499, lng: 121.604607, note: "有飛鏢與卡拉OK設備、價格平實的娛樂型酒吧，營業到清晨。"},
   {name: "叢林音樂酒吧", city: "花蓮縣", district: "花蓮市", type: "特調", purpose: "聚會", style: "音樂酒吧、有包廂", price: 2, address: "花蓮縣花蓮市三民街3號", phone: "0905-244-889", hours: "21:00–03:00（週三休）", lat: 23.978993, lng: 121.60986, note: "老闆熱情的音樂酒吧，設有可唱歌的包廂，適合團體。"},
+  {name: "和平公獄 Peace prison cafe Inn", city: "花蓮縣", district: "花蓮市", type: "特調", purpose: "聚會或一個人", address: "花蓮縣花蓮市和平路306號", hours: "19:00–00:00", lat: 23.972499, lng: 121.604607},
+  {name: "單行道咖啡x酒吧", city: "花蓮縣", district: "花蓮市", type: "特調", purpose: "聚會或一個人", style: "咖啡×酒吧", address: "花蓮縣花蓮市國聯五路250號", hours: "08:00–18:00", lat: 23.993191, lng: 121.604918},
+  {name: "高大俠海鮮燒烤Bar", city: "花蓮縣", district: "花蓮市", type: "啤酒", purpose: "聚會", style: "海鮮燒烤配酒", address: "花蓮縣花蓮市中山路50號", hours: "17:30–23:00", lat: 23.979839, lng: 121.607171},
 
   // ───── 台東縣 ─────
   {name: "Bar Cynic 吧蟲", city: "台東縣", district: "台東市", type: "特調", purpose: "聚會或一個人", style: "無菜單、在地食材入酒", address: "台東縣台東市和平街118號", hours: "20:00–02:00", lat: 22.752453, lng: 121.153021, awards: ["Tatler Best Taiwan 2025 台灣 Top 20 酒吧"], note: "主理人曾獲格蘭菲迪世界調酒實驗賽冠軍，無固定酒單，以台東在地農產客製調酒，被稱為台東都市傳說級酒吧。"},
