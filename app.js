@@ -163,8 +163,12 @@ const barKey = b => `${b.name}|${b.city}`;
 function loadStore() {
     try {
         const raw = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
-        return { want: raw.want || {}, visited: raw.visited || {}, route: Array.isArray(raw.route) ? raw.route : [] };
-    } catch (e) { return { want: {}, visited: {}, route: [] }; }
+        return {
+            want: raw.want || {}, visited: raw.visited || {},
+            route: Array.isArray(raw.route) ? raw.route : [],
+            custom: Array.isArray(raw.custom) ? raw.custom : []
+        };
+    } catch (e) { return { want: {}, visited: {}, route: [], custom: [] }; }
 }
 function saveStore() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* 無痕模式等情況，忽略 */ }
@@ -200,9 +204,22 @@ const overlay = document.getElementById('modalOverlay');
 const modalContent = document.getElementById('modalContent');
 const $ = id => document.getElementById(id);
 
-BARS.forEach((b, i) => { b._id = i; });
+// data.js 的原始資料，使用者自訂的酒吧會疊在這之上
+const BASE_BARS = BARS.slice();
+const CITY_ORDER = REGIONS.reduce((a, r) => a.concat(r.cities), []);
 const byKey = {};
-BARS.forEach(b => { byKey[barKey(b)] = b; });
+
+function rebuildBars() {
+    BARS.length = 0;
+    for (const b of BASE_BARS) BARS.push(b);
+    for (const b of (store.custom || [])) BARS.push({ ...b, _custom: true });
+    // 依縣市重新分組（sort 是穩定的，同縣市內原有順序不變，自訂的排在該縣市最後）
+    BARS.sort((a, b) => CITY_ORDER.indexOf(a.city) - CITY_ORDER.indexOf(b.city));
+    BARS.forEach((b, i) => { b._id = i; });
+    for (const k of Object.keys(byKey)) delete byKey[k];
+    for (const b of BARS) byKey[barKey(b)] = b;
+}
+rebuildBars();
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const isFriend = b => b.friend || (b.note || '').includes('脆友推薦');
@@ -315,6 +332,7 @@ function sortBars(list, mode) {
 // ===== 卡片 =====
 function renderCard(b, now) {
     const badges = [];
+    if (b._custom) badges.push('<span class="custom-badge">✎ 我新增的</span>');
     if (statusText(b)) badges.push(`<span class="status-badge">⚠️ ${statusText(b)}</span>`);
     if (b.special) badges.push('<span class="special-badge">⭐ 私心推薦</span>');
     if (hasAward(b)) badges.push('<span class="award-badge">🏆 獲獎名店</span>');
@@ -381,6 +399,7 @@ function openDetail(id) {
     if (b.purpose) rows.push(['適合場合', esc(b.purpose)]);
 
     const tags = [];
+    if (b._custom) tags.push('<span class="custom-badge">✎ 我新增的</span>');
     if (statusText(b)) tags.push(`<span class="status-badge">⚠️ ${statusText(b)}</span>`);
     if (b.special) tags.push('<span class="special-badge">⭐ 私心推薦</span>');
     if (isFriend(b)) tags.push('<span class="tag tag-friend">🧡 脆友推薦</span>');
@@ -430,6 +449,7 @@ function openDetail(id) {
             <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${mapQuery(b)}" target="_blank" rel="noopener">🗺️ 在 Google Maps 開啟</a>
             ${b.phone ? `<a class="btn btn-ghost" href="tel:${esc(b.phone.replace(/[^0-9+]/g, ''))}">☎️ 撥打電話</a>` : ''}
             <button class="btn btn-ghost" data-act="card" data-id="${b._id}">🖼️ 產生分享圖</button>
+            ${b._custom ? `<button class="btn btn-ghost" data-act="edit" data-id="${b._id}">✏️ 編輯</button>` : ''}
         </div>`;
 
     overlay.hidden = false;
@@ -640,8 +660,10 @@ function importBackup(file) {
             if (!d || typeof d !== 'object') throw new Error('格式不對');
             store.want = d.want && typeof d.want === 'object' ? d.want : {};
             store.visited = d.visited && typeof d.visited === 'object' ? d.visited : {};
+            store.custom = Array.isArray(d.custom) ? d.custom.filter(b => b && b.name && b.city) : [];
+            rebuildBars();
             store.route = Array.isArray(d.route) ? d.route.filter(k => byKey[k]) : [];
-            saveStore(); renderList(); update();
+            saveStore(); renderCityNav(); updateDistrictOptions(); renderChips(); renderList(); update();
             toast('備份已匯入');
         } catch (e) { toast('匯入失敗：檔案格式不正確'); }
     };
@@ -655,6 +677,190 @@ function toast(msg) {
     el.hidden = false;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { el.hidden = true; }, 2200);
+}
+
+// ===== 新增／編輯酒吧 =====
+// 這是靜態網站，沒有後端，所以新增的酒吧存在瀏覽器本機。
+// 想讓它變成正式資料，用「複製 data.js 格式」把那一行貼進 repo。
+const VALID_TYPES = ['經典', '特調', '經典特調', '啤酒'];
+const VALID_PURPOSES = ['一個人', '聚會', '聚會或一個人'];
+let editingKey = null;          // 正在編輯哪一筆（null = 新增）
+
+// 從表單讀出一個乾淨的酒吧物件，空欄位一律省略而不是存空字串
+function readForm() {
+    const f = $('barForm');
+    const g = n => (f.elements[n] ? String(f.elements[n].value).trim() : '');
+    const b = { name: g('name'), city: g('city') };
+    for (const k of ['district', 'type', 'purpose', 'style', 'budget', 'address', 'phone', 'hours', 'note']) {
+        if (g(k)) b[k] = g(k);
+    }
+    if (g('price')) b.price = Number(g('price'));
+    if (g('rating')) b.rating = Number(g('rating'));
+    if (g('ratingCount')) b.ratingCount = Number(g('ratingCount'));
+    if (g('lat')) b.lat = Number(g('lat'));
+    if (g('lng')) b.lng = Number(g('lng'));
+    const aw = g('awards').split('\n').map(x => x.trim()).filter(Boolean);
+    if (aw.length) b.awards = aw;
+    if (f.elements.special && f.elements.special.checked) b.special = true;
+    return b;
+}
+
+// 驗證規則跟 tests/validate-data.js 一致，避免存進去的資料在 CI 被擋下
+function validateBar(b, originalKey) {
+    const errs = [];
+    if (!b.name) errs.push('店名是必填的');
+    if (!b.city) errs.push('縣市是必填的');
+    else if (!CITY_ORDER.includes(b.city)) errs.push(`縣市「${b.city}」不在清單中`);
+
+    if (b.name && b.city) {
+        const key = `${b.name}|${b.city}`;
+        if (key !== originalKey && byKey[key]) errs.push(`「${b.name}」在${b.city}已經有一筆了，請換個名字或確認是否重複`);
+    }
+    if (b.type && !VALID_TYPES.includes(b.type)) errs.push('酒類不合法');
+    if (b.purpose && !VALID_PURPOSES.includes(b.purpose)) errs.push('適合場合不合法');
+    if (b.price !== undefined && ![1, 2, 3].includes(b.price)) errs.push('價位必須是 1、2 或 3');
+    if (b.rating !== undefined && (isNaN(b.rating) || b.rating < 0 || b.rating > 5)) errs.push('評分必須介於 0 到 5');
+    if (b.ratingCount !== undefined && (!Number.isInteger(b.ratingCount) || b.ratingCount < 0)) errs.push('評論數必須是非負整數');
+
+    const hasLat = b.lat !== undefined, hasLng = b.lng !== undefined;
+    if (hasLat !== hasLng) errs.push('緯度與經度要嘛都填、要嘛都不填');
+    if (hasLat && hasLng) {
+        if (isNaN(b.lat) || isNaN(b.lng)) errs.push('座標必須是數字');
+        else if (b.lat < 21.5 || b.lat > 26.5 || b.lng < 118 || b.lng > 122.2) errs.push('座標超出台灣範圍，是不是填反了？');
+    }
+    return errs;
+}
+
+// 產生可以直接貼進 data.js 的一行
+function toDataJsLine(b) {
+    const ORDER = ['name', 'city', 'district', 'type', 'purpose', 'style', 'price', 'budget',
+                   'address', 'phone', 'hours', 'lat', 'lng', 'rating', 'ratingCount',
+                   'awards', 'special', 'note'];
+    return '  {' + ORDER.filter(k => b[k] !== undefined)
+        .map(k => `${k}: ${JSON.stringify(b[k])}`).join(', ') + '},';
+}
+
+function refreshForm() {
+    const b = readForm();
+    const errs = validateBar(b, editingKey);
+
+    // 營業時間即時回饋：讓使用者知道程式看不看得懂他寫的格式
+    const hint = $('hoursHint');
+    const hv = $('barForm').elements.hours.value.trim();
+    if (!hv) {
+        hint.className = 'f-hint';
+        hint.textContent = '支援「週二至週日 19:00–02:00（週一休）」「20:00–02:00（週五六至03:00，週一休）」等寫法';
+    } else {
+        const p = parseHours(hv);
+        if (p) {
+            const DN = ['日', '一', '二', '三', '四', '五', '六'];
+            const days = Object.keys(p.schedule).map(Number).sort();
+            const t = p.schedule[days[0]];
+            const fmt = m => String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+            const varied = new Set(days.map(d => p.schedule[d].open + '_' + p.schedule[d].close)).size > 1;
+            hint.className = 'f-hint good';
+            hint.textContent = `✓ 看得懂：週${days.map(d => DN[d]).join('')} ${fmt(t.open)}–${fmt(t.close)}` +
+                               (varied ? '（各日略有不同）' : '');
+        } else {
+            hint.className = 'f-hint warn';
+            hint.textContent = '⚠ 這個格式解析不了，卡片上會顯示「時間未知」，「現在還有開」也篩不到';
+        }
+    }
+
+    // 錯誤清單
+    const box = $('formErrors');
+    if (errs.length) {
+        box.hidden = false;
+        box.innerHTML = '<b>還有幾個地方要修：</b><ul>' + errs.map(e => `<li>${esc(e)}</li>`).join('') + '</ul>';
+    } else box.hidden = true;
+    $('formSave').disabled = errs.length > 0;
+
+    // 卡片預覽
+    $('formPreview').innerHTML = b.name
+        ? renderCard({ ...b, _id: -1 }, new Date())
+        : '<div class="list-empty">填入店名後這裡會顯示卡片預覽</div>';
+}
+
+function openForm(bar) {
+    const f = $('barForm');
+    f.reset();
+    // 縣市選單
+    f.elements.city.innerHTML = '<option value="">請選擇</option>' +
+        CITY_ORDER.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    editingKey = bar ? barKey(bar) : null;
+    $('formTitle').textContent = bar ? '✏️ 編輯酒吧' : '➕ 新增酒吧';
+    $('formDelete').hidden = !bar;
+
+    if (bar) {
+        for (const k of ['name', 'city', 'district', 'type', 'purpose', 'style', 'budget',
+                         'address', 'phone', 'hours', 'note']) {
+            if (f.elements[k]) f.elements[k].value = bar[k] || '';
+        }
+        for (const k of ['price', 'rating', 'ratingCount', 'lat', 'lng']) {
+            if (f.elements[k]) f.elements[k].value = bar[k] !== undefined ? bar[k] : '';
+        }
+        f.elements.awards.value = (bar.awards || []).join('\n');
+        f.elements.special.checked = !!bar.special;
+    } else if (currentCity !== 'all') {
+        f.elements.city.value = currentCity;     // 從某個縣市頁籤按新增，就預選那個縣市
+    }
+
+    refreshForm();
+    $('formOverlay').hidden = false;
+    document.body.style.overflow = 'hidden';
+    f.elements.name.focus();
+}
+
+function closeForm() {
+    $('formOverlay').hidden = true;
+    document.body.style.overflow = '';
+    editingKey = null;
+}
+
+function saveForm(e) {
+    if (e) e.preventDefault();
+    const b = readForm();
+    const errs = validateBar(b, editingKey);
+    if (errs.length) { refreshForm(); return; }
+
+    store.custom = store.custom || [];
+    if (editingKey) {
+        const i = store.custom.findIndex(x => `${x.name}|${x.city}` === editingKey);
+        if (i >= 0) store.custom[i] = b; else store.custom.push(b);
+    } else {
+        store.custom.push(b);
+    }
+    saveStore();
+    rebuildBars();
+    renderCityNav(); updateDistrictOptions(); renderChips(); update();
+    closeForm();
+    toast(editingKey ? `已更新「${b.name}」` : `已新增「${b.name}」🍸`);
+}
+
+function deleteCustom(key) {
+    if (!confirm('確定要刪除這筆自訂酒吧嗎？此動作無法復原。')) return;
+    store.custom = (store.custom || []).filter(x => `${x.name}|${x.city}` !== key);
+    delete store.want[key];
+    delete store.visited[key];
+    store.route = store.route.filter(k => k !== key);
+    saveStore();
+    rebuildBars();
+    renderCityNav(); updateDistrictOptions(); renderChips(); update();
+    closeForm();
+    toast('已刪除');
+}
+
+async function copyDataJs() {
+    const b = readForm();
+    if (!b.name || !b.city) { toast('至少要有店名和縣市才能產生'); return; }
+    const line = toDataJsLine(b);
+    try {
+        await navigator.clipboard.writeText(line);
+        toast('已複製，貼到 data.js 對應縣市段落即可');
+    } catch (err) {
+        window.prompt('複製這一行貼進 data.js：', line);
+    }
 }
 
 // ===== 年度回顧 =====
@@ -1192,6 +1398,7 @@ function onActionClick(e) {
     if (act === 'detail') { closeDetail(); openDetail(Number(btn.dataset.id)); return true; }
     if (act === 'move') { moveInRoute(btn.dataset.key, Number(btn.dataset.d)); return true; }
     if (act === 'card') { shareCard(BARS[Number(btn.dataset.id)]); return true; }
+    if (act === 'edit') { const b = BARS[Number(btn.dataset.id)]; closeDetail(); openForm(b); return true; }
     if (!handleAction(act, btn.dataset.key, btn.dataset.n)) return true;
     update();
     if (currentDetailId !== null && !overlay.hidden) openDetail(currentDetailId);   // 詳細頁開著就同步刷新
@@ -1218,6 +1425,7 @@ overlay.addEventListener('click', e => { if (e.target === overlay) closeDetail()
 document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (!overlay.hidden) closeDetail();
+    else if (!$('formOverlay').hidden) closeForm();
     else if (!$('listOverlay').hidden) closeList();
     else if (!$('recapOverlay').hidden) closeRecap();
 });
@@ -1269,6 +1477,16 @@ $('importFile').addEventListener('change', e => {
 
 // 分享
 $('shareBtn').addEventListener('click', share);
+
+// 新增／編輯酒吧
+$('addBtn').addEventListener('click', () => openForm());
+$('formClose').addEventListener('click', closeForm);
+$('formOverlay').addEventListener('click', e => { if (e.target === $('formOverlay')) closeForm(); });
+$('barForm').addEventListener('submit', saveForm);
+$('barForm').addEventListener('input', refreshForm);
+$('barForm').addEventListener('change', refreshForm);
+$('formCopy').addEventListener('click', copyDataJs);
+$('formDelete').addEventListener('click', () => { if (editingKey) deleteCustom(editingKey); });
 
 // 主題、定位、隨機、年度回顧
 $('themeBtn').addEventListener('click', toggleTheme);

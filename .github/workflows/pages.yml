@@ -22,16 +22,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      # enablement: true 會在第一次執行時自動幫這個 repo 開啟 Pages
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      # Pages 已在 repo 設定中啟用，這裡只需要取得設定
+      - uses: actions/configure-pages@v6
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: '.'
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

@@ -16,7 +16,7 @@ const t = (name, cond, extra) => {
 const section = s => console.log('\n=== ' + s + ' ===');
 
 // 建立一個載好程式的測試環境
-function boot(url = 'https://example.com/index.html') {
+function boot(url = 'https://example.com/index.html', seed = null) {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
         .replace(/<script src="https:\/\/cdnjs[^"]*"><\/script>/g, '')   // 離線測試，不載 CDN
         .replace(/<link rel="stylesheet" href="https:\/\/cdnjs[^"]*">/g, '');
@@ -24,6 +24,7 @@ function boot(url = 'https://example.com/index.html') {
     const { window } = dom;
     window.alert = m => { window.__alert = m; };
     window.prompt = (a, b) => b;
+    window.confirm = () => window.__confirm !== false;
     window.matchMedia = window.matchMedia || (q => ({ matches: false, addListener() {}, removeListener() {} }));
 
     // 定位替身：預設回傳台北車站附近
@@ -68,6 +69,9 @@ function boot(url = 'https://example.com/index.html') {
             addTo() { map.markers.push(this); return this; } })
     };
 
+    // 模擬「重新整理」：程式啟動前就先把資料放進 localStorage
+    if (seed) window.localStorage.setItem('barbible.v1', JSON.stringify(seed));
+
     // 真實瀏覽器中多個 <script> 共用頂層作用域，所以合併成一次 eval
     window.eval(
         fs.readFileSync(path.join(ROOT, 'data.js'), 'utf8') + '\n' +
@@ -76,7 +80,8 @@ function boot(url = 'https://example.com/index.html') {
         ' handleAction, update, renderRoute, renderList, openList, selectCity, stateToUrl, autoSortRoute,' +
         ' parseHours, openState, selectedTypes, selectedTraits, distanceKm, routeSchedule, yearStats,' +
         ' sinceText, myNote, visitLog, applyTheme, toggleTheme, randomPick, shareCard, lastFiltered,' +
-        ' budgetText, statusText };');
+        ' budgetText, statusText, openForm, closeForm, saveForm, readForm, validateBar, toDataJsLine,' +
+        ' rebuildBars, deleteCustom, refreshForm, CITY_ORDER };');
 
     const api = window.__t;
     return {
@@ -476,6 +481,156 @@ function boot(url = 'https://example.com/index.html') {
 
     const e2 = boot();
     t('重新載入沿用偏好', e2.window.document.documentElement.dataset.theme === 'dark');
+}
+
+
+// ---------------------------------------------------------------- 新增酒吧
+{
+    const e = boot();
+    section('新增酒吧');
+    const T = e.api, W = e.window;
+    const base = T.BARS.length;
+
+    e.click(e.$('addBtn'));
+    t('表單開啟', !e.$('formOverlay').hidden);
+    t('標題為新增', e.$('formTitle').textContent.includes('新增'));
+    t('刪除鍵隱藏', e.$('formDelete').hidden);
+    t('縣市選單已填入', e.$('barForm').elements.city.options.length === T.CITY_ORDER.length + 1);
+    t('未填時儲存鍵停用', e.$('formSave').disabled);
+
+    const f = e.$('barForm');
+    const fill = (name, val) => { f.elements[name].value = val; e.input(f); };
+    const check = (name, val) => { f.elements[name].checked = val; f.dispatchEvent(new W.Event('change', { bubbles: true })); };
+
+    fill('name', '測試酒吧');
+    t('只填店名仍不能存（缺縣市）', e.$('formSave').disabled);
+    t('錯誤訊息提到縣市', e.$('formErrors').textContent.includes('縣市'));
+    fill('city', '台北市');
+    t('填完必填即可儲存', !e.$('formSave').disabled);
+    t('預覽出現卡片', e.$('formPreview').innerHTML.includes('測試酒吧'));
+
+    // 各欄位驗證
+    fill('rating', '7');
+    t('評分超過 5 被擋', e.$('formSave').disabled && e.$('formErrors').textContent.includes('0 到 5'));
+    fill('rating', '4.6');
+    t('合法評分通過', !e.$('formSave').disabled);
+    fill('lat', '25.04');
+    t('只填緯度被擋', e.$('formSave').disabled && e.$('formErrors').textContent.includes('都填'));
+    fill('lng', '121.55');
+    t('座標成對通過', !e.$('formSave').disabled);
+    fill('lat', '48.8');
+    t('座標超出台灣被擋', e.$('formSave').disabled && e.$('formErrors').textContent.includes('台灣範圍'));
+    fill('lat', '25.04');
+
+    // 重複店名
+    const exist = T.BARS.find(b => b.city === '台北市');
+    fill('name', exist.name);
+    t('同縣市重複店名被擋', e.$('formSave').disabled && e.$('formErrors').textContent.includes('已經有一筆'));
+    fill('name', '測試酒吧');
+
+    // 營業時間即時回饋
+    fill('hours', '週二至週日 19:00–02:00（週一休）');
+    t('看得懂的營業時間給綠燈', e.$('hoursHint').className.includes('good'), e.$('hoursHint').className);
+    t('回饋顯示解析結果', e.$('hoursHint').textContent.includes('二三四五六'), e.$('hoursHint').textContent);
+    fill('hours', '營業至02:00');
+    t('看不懂的營業時間給警告', e.$('hoursHint').className.includes('warn'));
+    t('警告說明會顯示時間未知', e.$('hoursHint').textContent.includes('時間未知'));
+    fill('hours', '20:00–02:00（週一休）');
+
+    // 其餘欄位
+    fill('district', '大安區'); fill('type', '經典特調'); fill('purpose', '一個人');
+    fill('style', '日式'); fill('price', '2'); fill('address', '台北市大安區測試路1號');
+    fill('phone', '02-1234-5678'); fill('ratingCount', '320');
+    fill('awards', "Asia's 50 Best Bars 2025 #40\n某某獎");
+    fill('note', '測試用的介紹文字');
+    check('special', true);
+
+    const draft = T.readForm();
+    t('空欄位不會被存成空字串', !('budget' in draft), JSON.stringify(draft.budget));
+    t('獲獎解析成陣列', Array.isArray(draft.awards) && draft.awards.length === 2);
+    t('數字欄位轉成數字', typeof draft.price === 'number' && typeof draft.rating === 'number');
+    t('勾選轉成 true', draft.special === true);
+
+    // data.js 格式
+    const line = T.toDataJsLine(draft);
+    t('data.js 格式為單行物件', line.startsWith('  {') && line.endsWith('},'));
+    t('格式可被解析回來', (() => { try { return new Function('return [' + line + '][0]')().name === '測試酒吧'; } catch (x) { return false; } })());
+    t('格式含所有已填欄位', ['name', 'city', 'district', 'type', 'price', 'rating', 'awards', 'special', 'note'].every(k => line.includes(k + ':')));
+
+    // 儲存
+    e.click(e.$('formSave'));
+    t('儲存後表單關閉', e.$('formOverlay').hidden);
+    t('總數 +1', T.BARS.length === base + 1, T.BARS.length + ' vs ' + (base + 1));
+    t('有成功提示', e.$('toast').textContent.includes('已新增'));
+    t('寫入 localStorage', JSON.parse(W.localStorage.getItem('barbible.v1')).custom.length === 1);
+
+    const added = T.byKey['測試酒吧|台北市'];
+    t('可用 key 找到', !!added);
+    t('標記為自訂', added._custom === true);
+    t('出現在清單中', e.$('barGrid').innerHTML.includes('測試酒吧'));
+    t('卡片有自訂標章', e.$('barGrid').innerHTML.includes('custom-badge'));
+    t('歸到正確縣市', e.$('barGrid').innerHTML.indexOf('測試酒吧') > -1 && added.city === '台北市');
+    t('台北市計數 +1', e.$('cityNav').innerHTML.includes('台北市'));
+
+    // 篩選也吃得到
+    e.api.selectCity('台北市');
+    t('縣市篩選涵蓋自訂店', e.$('barGrid').innerHTML.includes('測試酒吧'));
+    e.$('districtFilter').value = '大安區'; e.input(e.$('districtFilter'));
+    t('行政區篩選涵蓋自訂店', e.$('barGrid').innerHTML.includes('測試酒吧'));
+    e.$('districtFilter').value = 'all'; e.input(e.$('districtFilter'));
+    e.api.selectCity('all');
+
+    // 編輯
+    e.click(e.qsa('.bar-card').find(c => c.textContent.includes('測試酒吧')));
+    t('詳細頁有編輯鍵', !!W.document.querySelector('[data-act="edit"]'));
+    e.click(W.document.querySelector('[data-act="edit"]'));
+    t('編輯表單開啟', !e.$('formOverlay').hidden && e.$('formTitle').textContent.includes('編輯'));
+    t('欄位帶入原值', e.$('barForm').elements.name.value === '測試酒吧' && e.$('barForm').elements.price.value === '2');
+    t('獲獎還原成多行', e.$('barForm').elements.awards.value.split('\n').length === 2);
+    t('編輯時顯示刪除鍵', !e.$('formDelete').hidden);
+    t('編輯自己不算重複', !e.$('formSave').disabled);
+    fill('name', '測試酒吧改名');
+    e.click(e.$('formSave'));
+    t('改名後總數不變', T.BARS.length === base + 1, T.BARS.length);
+    t('新名字生效', !!T.byKey['測試酒吧改名|台北市'] && !T.byKey['測試酒吧|台北市']);
+
+    // 刪除
+    e.click(e.qsa('.bar-card').find(c => c.textContent.includes('測試酒吧改名')));
+    e.click(W.document.querySelector('[data-act="edit"]'));
+    e.click(e.$('formDelete'));
+    t('刪除後總數還原', T.BARS.length === base, T.BARS.length);
+    t('清單中已消失', !e.$('barGrid').innerHTML.includes('測試酒吧改名'));
+    t('localStorage 也清掉', JSON.parse(W.localStorage.getItem('barbible.v1')).custom.length === 0);
+}
+
+// ---------------------------------------------------------------- 自訂酒吧的持久化
+{
+    const e = boot();
+    section('自訂酒吧的持久化與備份');
+    const T = e.api, W = e.window;
+    const base = T.BARS.length;
+
+    T.store.custom = [{ name: '持久化測試吧', city: '台南市', district: '中西區', type: '特調', price: 2 }];
+    T.saveStore(); T.rebuildBars(); T.update();
+    t('重建後總數 +1', T.BARS.length === base + 1);
+
+    // 模擬重新整理：把剛才存好的狀態帶進新的環境
+    const saved = JSON.parse(W.localStorage.getItem('barbible.v1'));
+    const e2 = boot('https://example.com/index.html', saved);
+    t('重新載入後仍在', e2.api.BARS.length === base + 1, e2.api.BARS.length);
+    t('資料完整', e2.api.byKey['持久化測試吧|台南市'].district === '中西區');
+    t('台南市可篩到', (() => { e2.api.selectCity('台南市');
+        return e2.$('barGrid').innerHTML.includes('持久化測試吧'); })());
+
+    // 備份匯出含自訂酒吧
+    const backup = saved;
+    t('備份含 custom 欄位', Array.isArray(backup.custom) && backup.custom.length === 1);
+
+    // 自訂店也能收藏與加入路線
+    const k = '持久化測試吧|台南市';
+    e2.api.handleAction('want', k); e2.api.handleAction('route', k); e2.api.update();
+    t('自訂店可收藏', !!e2.api.store.want[k]);
+    t('自訂店可加入路線', e2.api.store.route.includes(k));
 }
 
 console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');
