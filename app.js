@@ -40,12 +40,12 @@ let selectedTraits = new Set();
 const DAY_CH = { '日': 0, '天': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
 
 function parseDays(spec) {
-    const s = spec.replace(/週|星期|禮拜/g, '');
+    const s = spec.replace(/週|周|星期|禮拜/g, '');
     const days = [];
     for (let i = 0; i < s.length; i++) {
         const c = s[i];
         if (!(c in DAY_CH)) continue;
-        if (s[i + 1] === '至' && s[i + 2] in DAY_CH) {
+        if ((s[i + 1] === '至' || s[i + 1] === '到') && s[i + 2] in DAY_CH) {
             const a = DAY_CH[c], b = DAY_CH[s[i + 2]];
             for (let d = a; ; d = (d + 1) % 7) { days.push(d); if (d === b) break; }
             i += 2;
@@ -58,7 +58,13 @@ const toMin = (h, m) => Number(h) * 60 + Number(m);
 
 function parseHours(str) {
     if (!str) return null;
-    const t = str.replace(/[–—〜~－]/g, '-').replace(/：/g, ':').replace(/\s+/g, ' ').trim();
+    const t = str
+        .replace(/[–—〜~－]/g, '-')
+        .replace(/：/g, ':')
+        .replace(/周/g, '週')                                   // 「周日」是「週日」的常見寫法
+        .replace(/每[日天]|天天|全年無休/g, '週一至週日')          // 「每日 18:00-02:00」
+        .replace(/\s+/g, ' ')
+        .trim();
 
     const notes = [];
     const main = t.replace(/[（(]([^）)]*)[)）]/g, (_, g) => { notes.push(g); return ' '; }).trim();
@@ -68,7 +74,7 @@ function parseHours(str) {
     let lastOpen = null, parsedAny = false;
 
     for (const seg of segs) {
-        const dayMatch = seg.match(/^(?:約\s*)?((?:(?:週|星期|禮拜)[一二三四五六日天至、]+)+)/);
+        const dayMatch = seg.match(/^(?:約\s*)?((?:(?:週|周|星期|禮拜)[一二三四五六日天至到、]+)+)/);
         const days = dayMatch ? parseDays(dayMatch[1]) : [0, 1, 2, 3, 4, 5, 6];
         if (!days.length) continue;
 
@@ -89,7 +95,7 @@ function parseHours(str) {
     let irregular = false;
     for (const note of notes) {
         if (/不定休|依.*公告|季節|預約制/.test(note)) irregular = true;
-        const ov = note.match(/((?:週|星期)?[一二三四五六日天、至]+?)至\s*(\d{1,2}):(\d{2})/);
+        const ov = note.match(/((?:週|周|星期)?[一二三四五六日天、至到]+?)[至到]\s*(\d{1,2}):(\d{2})/);
         if (ov) {
             for (const d of parseDays(ov[1])) if (schedule[d]) {
                 let c = toMin(ov[2], ov[3]);
@@ -97,11 +103,11 @@ function parseHours(str) {
                 schedule[d] = { open: schedule[d].open, close: c };
             }
         }
-        for (const m of note.matchAll(/((?:週|星期)?[一二三四五六日天、至]+?)\s*(?:公休|店休|休息|休)(?![息])/g)) {
+        for (const m of note.matchAll(/((?:週|周|星期)?[一二三四五六日天、至到]+?)\s*(?:公休|店休|休息|休)(?![息])/g)) {
             for (const d of parseDays(m[1])) delete schedule[d];
         }
     }
-    for (const m of main.matchAll(/((?:週|星期)[一二三四五六日天、至]+?)\s*(?:公休|店休|休)(?![息])/g)) {
+    for (const m of main.matchAll(/((?:週|周|星期)[一二三四五六日天、至到]+?)\s*(?:公休|店休|休)(?![息])/g)) {
         for (const d of parseDays(m[1])) delete schedule[d];
     }
 
@@ -685,6 +691,15 @@ function toast(msg) {
 const VALID_TYPES = ['經典', '特調', '經典特調', '啤酒'];
 const VALID_PURPOSES = ['一個人', '聚會', '聚會或一個人'];
 let editingKey = null;          // 正在編輯哪一筆（null = 新增）
+let formSnapshot = '';          // 開啟當下的表單內容，用來判斷有沒有改過
+
+function snapshotForm() {
+    const f = $('barForm');
+    if (!f) return '';
+    return [...f.elements].map(el => el.type === 'checkbox' ? el.checked : el.value).join('\u0000');
+}
+
+const formDirty = () => snapshotForm() !== formSnapshot;
 
 // 從表單讀出一個乾淨的酒吧物件，空欄位一律省略而不是存空字串
 function readForm() {
@@ -740,7 +755,23 @@ function toDataJsLine(b) {
         .map(k => `${k}: ${JSON.stringify(b[k])}`).join(', ') + '},';
 }
 
+let previewTimer = null;
+
+// 打字時只跑輕量驗證，卡片預覽延後 180ms 再畫
 function refreshForm() {
+    validateNow();
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(renderPreview, 180);
+}
+
+function renderPreview() {
+    const b = readForm();
+    $('formPreview').innerHTML = b.name
+        ? renderCard({ ...b, _id: -1 }, new Date())
+        : '<div class="list-empty">填入店名後這裡會顯示卡片預覽</div>';
+}
+
+function validateNow() {
     const b = readForm();
     const errs = validateBar(b, editingKey);
 
@@ -774,11 +805,6 @@ function refreshForm() {
         box.innerHTML = '<b>還有幾個地方要修：</b><ul>' + errs.map(e => `<li>${esc(e)}</li>`).join('') + '</ul>';
     } else box.hidden = true;
     $('formSave').disabled = errs.length > 0;
-
-    // 卡片預覽
-    $('formPreview').innerHTML = b.name
-        ? renderCard({ ...b, _id: -1 }, new Date())
-        : '<div class="list-empty">填入店名後這裡會顯示卡片預覽</div>';
 }
 
 function openForm(bar) {
@@ -807,22 +833,29 @@ function openForm(bar) {
     }
 
     refreshForm();
+    renderPreview();
+    fillGhForm();
+    formSnapshot = snapshotForm();
     $('formOverlay').hidden = false;
     document.body.style.overflow = 'hidden';
     f.elements.name.focus();
 }
 
-function closeForm() {
+// force = true 代表儲存或刪除完成，不需要再問
+function closeForm(force) {
+    if (!force && formDirty() && !confirm('表單還有沒儲存的內容，確定要關閉嗎？')) return false;
     $('formOverlay').hidden = true;
     document.body.style.overflow = '';
     editingKey = null;
+    formSnapshot = '';
+    return true;
 }
 
 function saveForm(e) {
     if (e) e.preventDefault();
     const b = readForm();
     const errs = validateBar(b, editingKey);
-    if (errs.length) { refreshForm(); return; }
+    if (errs.length) { validateNow(); renderPreview(); return; }
 
     store.custom = store.custom || [];
     if (editingKey) {
@@ -834,8 +867,9 @@ function saveForm(e) {
     saveStore();
     rebuildBars();
     renderCityNav(); updateDistrictOptions(); renderChips(); update();
-    closeForm();
-    toast(editingKey ? `已更新「${b.name}」` : `已新增「${b.name}」🍸`);
+    const wasEdit = !!editingKey;
+    closeForm(true);
+    toast(wasEdit ? `已更新「${b.name}」` : `已新增「${b.name}」🍸`);
 }
 
 function deleteCustom(key) {
@@ -847,7 +881,7 @@ function deleteCustom(key) {
     saveStore();
     rebuildBars();
     renderCityNav(); updateDistrictOptions(); renderChips(); update();
-    closeForm();
+    closeForm(true);
     toast('已刪除');
 }
 
@@ -861,6 +895,201 @@ async function copyDataJs() {
     } catch (err) {
         window.prompt('複製這一行貼進 data.js：', line);
     }
+}
+
+// ===== 寫回 GitHub repo =====
+// 用 GitHub 的 Contents API 直接讀寫 repo 裡的 data.js，不需要任何後端。
+// 權杖存在瀏覽器本機，只有這台裝置用得到。
+const GH_KEY = 'barbible.gh';
+const GH_DEFAULT_REPO = 'Sid-EN/Bar_Hopping';
+
+function loadGh() {
+    try {
+        const g = JSON.parse(localStorage.getItem(GH_KEY) || '{}');
+        return { repo: g.repo || GH_DEFAULT_REPO, token: g.token || '' };
+    } catch (e) { return { repo: GH_DEFAULT_REPO, token: '' }; }
+}
+function saveGh(g) {
+    try { localStorage.setItem(GH_KEY, JSON.stringify(g)); } catch (e) { /* 無痕模式，忽略 */ }
+}
+
+// UTF-8 安全的 base64：GitHub API 收送的檔案內容都是 base64，
+// 而 data.js 有大量中文，直接 btoa 會壞掉。分段處理避免參數過多。
+function b64encode(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(bin);
+}
+function b64decode(b64) {
+    const bin = atob(String(b64).replace(/\s/g, ''));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+}
+
+async function ghFetch(path, opts) {
+    const g = loadGh();
+    if (!g.token) throw new Error('還沒設定存取權杖');
+    const res = await fetch(`https://api.github.com/repos/${g.repo}/${path}`, {
+        ...opts,
+        headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': `Bearer ${g.token}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+            ...(opts && opts.body ? { 'Content-Type': 'application/json' } : {})
+        }
+    });
+    if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        let msg = `GitHub 回應 ${res.status}`;
+        if (res.status === 401) msg = '權杖無效或已過期';
+        else if (res.status === 403) msg = '權杖權限不足（需要 Contents: Read and write）';
+        else if (res.status === 404) msg = '找不到這個 repo 或檔案，請確認 Repository 欄位';
+        else if (res.status === 409) msg = 'CONFLICT';
+        else if (res.status === 422) msg = 'GitHub 拒絕這次修改：' + detail.slice(0, 120);
+        const err = new Error(msg);
+        err.status = res.status;
+        throw err;
+    }
+    return res.json();
+}
+
+// 把一行酒吧資料插進 data.js 的對應縣市段落；同名同縣市已存在就取代那一行
+function insertIntoDataJs(src, bar) {
+    const line = toDataJsLine(bar);
+    const marker = c => `  // ───── ${c} ─────`;
+
+    // 已經有同一間了嗎（用 name + city 判斷）
+    const escRe = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const existing = new RegExp(
+        `^\\s*\\{name: ${escRe(JSON.stringify(bar.name))}, city: ${escRe(JSON.stringify(bar.city))}[,}].*$`, 'm');
+    if (existing.test(src)) {
+        return { content: src.replace(existing, line), mode: 'update' };
+    }
+
+    const at = src.indexOf(marker(bar.city));
+    if (at >= 0) {
+        // 插在這個縣市區塊的最後一行之後
+        const nextSection = src.indexOf('\n  // ─────', at + 1);
+        const endOfArray = src.lastIndexOf('];');
+        let end = nextSection >= 0 ? nextSection : endOfArray;
+        // 往回退到最後一個非空白行的行尾
+        let cut = src.lastIndexOf('},', end);
+        if (cut < at) cut = src.indexOf('\n', at);
+        else cut = src.indexOf('\n', cut);
+        return { content: src.slice(0, cut + 1) + line + '\n' + src.slice(cut + 1), mode: 'insert' };
+    }
+
+    // 這個縣市還沒有任何店：依 CITY_ORDER 找到該插在哪個縣市之前
+    const idx = CITY_ORDER.indexOf(bar.city);
+    let before = -1;
+    for (let i = idx + 1; i < CITY_ORDER.length; i++) {
+        const p = src.indexOf(marker(CITY_ORDER[i]));
+        if (p >= 0) { before = p; break; }
+    }
+    const block = `\n${marker(bar.city)}\n${line}\n`;
+    if (before >= 0) return { content: src.slice(0, before) + block.slice(1) + src.slice(before), mode: 'new-city' };
+    const endOfArray = src.lastIndexOf('];');
+    return { content: src.slice(0, endOfArray) + block + src.slice(endOfArray), mode: 'new-city' };
+}
+
+async function pushToRepo() {
+    const bar = readForm();
+    const errs = validateBar(bar, editingKey);
+    if (errs.length) { validateNow(); toast('還有欄位要修正，先處理完再寫回'); return; }
+
+    const g = loadGh();
+    if (!g.token) {
+        $('ghBox').open = true;
+        toast('請先在下方的 GitHub 設定填入存取權杖');
+        $('ghToken').focus();
+        return;
+    }
+
+    const btn = $('formPush');
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = '寫入中…';
+
+    try {
+        // 最多重試一次：別人剛好也改了 data.js 時 sha 會對不上
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const file = await ghFetch('contents/data.js');
+            const src = b64decode(file.content);
+            const { content, mode } = insertIntoDataJs(src, bar);
+
+            if (content === src) { toast('data.js 裡已經有一模一樣的內容了'); break; }
+
+            const verb = mode === 'update' ? '更新' : '新增';
+            try {
+                const res = await ghFetch('contents/data.js', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        message: `${verb}酒吧：${bar.name}（${bar.city}）\n\n由網站的新增表單提交`,
+                        content: b64encode(content),
+                        sha: file.sha
+                    })
+                });
+                // 寫回成功，本機那份自訂資料就不需要了（避免同一間出現兩次）
+                const key = `${bar.name}|${bar.city}`;
+                store.custom = (store.custom || []).filter(x => `${x.name}|${x.city}` !== key);
+                saveStore();
+                rebuildBars();
+                renderCityNav(); updateDistrictOptions(); renderChips(); update();
+                closeForm(true);
+
+                const url = res.commit && res.commit.html_url;
+                setGhStatus(`已${verb}並提交`, 'ok');
+                toast(`已${verb}到 repo！Pages 大約一分鐘後更新`);
+                if (url && confirm(`已${verb}「${bar.name}」並提交到 data.js。\n\n要開啟這個 commit 看看嗎？`)) {
+                    window.open(url, '_blank', 'noopener');
+                }
+                break;
+            } catch (e) {
+                if (e.message === 'CONFLICT' && attempt === 0) continue;   // 重抓最新版再試一次
+                throw e;
+            }
+        }
+    } catch (e) {
+        setGhStatus(e.message, 'err');
+        toast('寫回失敗：' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+    }
+}
+
+function setGhStatus(msg, kind) {
+    const el = $('ghStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'gh-status' + (kind ? ' ' + kind : '');
+}
+
+async function testGh() {
+    saveGhFromForm();
+    setGhStatus('測試中…');
+    try {
+        const file = await ghFetch('contents/data.js');
+        setGhStatus(`連線正常，讀到 data.js（${(file.size / 1024).toFixed(0)} KB）`, 'ok');
+    } catch (e) {
+        setGhStatus(e.message, 'err');
+    }
+}
+
+function saveGhFromForm() {
+    saveGh({ repo: $('ghRepo').value.trim() || GH_DEFAULT_REPO, token: $('ghToken').value.trim() });
+}
+
+function fillGhForm() {
+    const g = loadGh();
+    $('ghRepo').value = g.repo;
+    $('ghToken').value = g.token;
+    setGhStatus(g.token ? '已設定權杖' : '尚未設定權杖');
 }
 
 // ===== 年度回顧 =====
@@ -1425,7 +1654,7 @@ overlay.addEventListener('click', e => { if (e.target === overlay) closeDetail()
 document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (!overlay.hidden) closeDetail();
-    else if (!$('formOverlay').hidden) closeForm();
+    else if (!$('formOverlay').hidden) closeForm();     // 內含未儲存確認
     else if (!$('listOverlay').hidden) closeList();
     else if (!$('recapOverlay').hidden) closeRecap();
 });
@@ -1480,12 +1709,21 @@ $('shareBtn').addEventListener('click', share);
 
 // 新增／編輯酒吧
 $('addBtn').addEventListener('click', () => openForm());
-$('formClose').addEventListener('click', closeForm);
-$('formOverlay').addEventListener('click', e => { if (e.target === $('formOverlay')) closeForm(); });
+$('formClose').addEventListener('click', () => closeForm());
+// 表單不因點到背景而關閉：誤觸一次就整份資料不見，代價太大。
+// 要關請按右上角 × 或 Esc，有未儲存內容時還會再確認一次。
 $('barForm').addEventListener('submit', saveForm);
 $('barForm').addEventListener('input', refreshForm);
 $('barForm').addEventListener('change', refreshForm);
 $('formCopy').addEventListener('click', copyDataJs);
+$('formPush').addEventListener('click', pushToRepo);
+$('ghSave').addEventListener('click', () => { saveGhFromForm(); setGhStatus('設定已儲存', 'ok'); });
+$('ghTest').addEventListener('click', testGh);
+$('ghClear').addEventListener('click', () => {
+    saveGh({ repo: $('ghRepo').value.trim() || GH_DEFAULT_REPO, token: '' });
+    $('ghToken').value = '';
+    setGhStatus('權杖已清除', 'ok');
+});
 $('formDelete').addEventListener('click', () => { if (editingKey) deleteCustom(editingKey); });
 
 // 主題、定位、隨機、年度回顧
@@ -1515,7 +1753,10 @@ applyUrlState();                   // 先套用網址帶來的篩選條件
 renderCityNav();
 updateDistrictOptions();
 renderChips();
-document.querySelectorAll('select, input[type=text]').forEach(el => el.addEventListener('input', update));
+// 只綁篩選面板裡的控制項。先前是全頁掃描，連新增表單的 11 個輸入框都綁上了，
+// 導致在表單裡每打一個字就重繪 222 張卡片，輸入嚴重卡頓。
+document.querySelectorAll('.filter-panel select, .filter-panel input[type=text]')
+    .forEach(el => el.addEventListener('input', update));
 update();
 setInterval(update, 60000);        // 每分鐘更新一次營業狀態
 

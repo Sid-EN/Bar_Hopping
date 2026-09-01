@@ -81,7 +81,8 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         ' parseHours, openState, selectedTypes, selectedTraits, distanceKm, routeSchedule, yearStats,' +
         ' sinceText, myNote, visitLog, applyTheme, toggleTheme, randomPick, shareCard, lastFiltered,' +
         ' budgetText, statusText, openForm, closeForm, saveForm, readForm, validateBar, toDataJsLine,' +
-        ' rebuildBars, deleteCustom, refreshForm, CITY_ORDER };');
+        ' rebuildBars, deleteCustom, refreshForm, renderPreview, validateNow, CITY_ORDER,' +
+        ' insertIntoDataJs, b64encode, b64decode, loadGh, saveGh, formDirty, snapshotForm };');
 
     const api = window.__t;
     return {
@@ -507,7 +508,10 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('錯誤訊息提到縣市', e.$('formErrors').textContent.includes('縣市'));
     fill('city', '台北市');
     t('填完必填即可儲存', !e.$('formSave').disabled);
-    t('預覽出現卡片', e.$('formPreview').innerHTML.includes('測試酒吧'));
+    // 預覽是 debounce 的（打字時不會每個字元都重畫），這裡直接觸發一次來驗證內容
+    t('打字當下先不重畫預覽', !e.$('formPreview').innerHTML.includes('測試酒吧'));
+    T.renderPreview();
+    t('延後後預覽出現卡片', e.$('formPreview').innerHTML.includes('測試酒吧'));
 
     // 各欄位驗證
     fill('rating', '7');
@@ -631,6 +635,128 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     e2.api.handleAction('want', k); e2.api.handleAction('route', k); e2.api.update();
     t('自訂店可收藏', !!e2.api.store.want[k]);
     t('自訂店可加入路線', e2.api.store.route.includes(k));
+}
+
+// ---------------------------------------------------------------- 這次修的四個問題
+{
+    const e = boot();
+    section('回報問題的修正');
+    const T = e.api, W = e.window;
+
+    // (1) 表單輸入不該觸發整頁重繪
+    const filterBound = [...W.document.querySelectorAll('.filter-panel select, .filter-panel input[type=text]')];
+    const formInputs = [...e.$('barForm').querySelectorAll('select, input[type=text]')];
+    t('篩選監聽器只綁篩選面板', filterBound.length > 0 && formInputs.every(el => !filterBound.includes(el)));
+
+    e.click(e.$('addBtn'));
+    const f = e.$('barForm');
+    f.elements.name.value = '效能測試吧';
+    const gridBefore = e.$('barGrid').innerHTML;
+    e.input(f);
+    t('在表單打字不會重繪主清單', e.$('barGrid').innerHTML === gridBefore);
+    t('驗證仍即時更新', !e.$('formErrors').hidden || e.$('formSave').disabled !== undefined);
+
+    // (2) 點背景不該關閉表單
+    e.click(e.$('formOverlay'));
+    t('點背景不會關閉表單', !e.$('formOverlay').hidden);
+    t('有未儲存內容時判定為 dirty', T.formDirty());
+    W.__confirm = false;
+    e.click(e.$('formClose'));
+    t('未儲存時關閉會先確認（取消則不關）', !e.$('formOverlay').hidden);
+    W.__confirm = true;
+    e.click(e.$('formClose'));
+    t('確認後才真的關閉', e.$('formOverlay').hidden);
+
+    // (3) 週/周 異體字與各種寫法
+    const P = T.parseHours, DN = ['日', '一', '二', '三', '四', '五', '六'];
+    const days = s => { const p = P(s); return p ? Object.keys(p.schedule).map(Number).sort().map(d => DN[d]).join('') : null; };
+    const ALL = '日一二三四五六';
+    t('週一至周日（異體字）', days('週一至周日 08:00-02:00') === ALL, days('週一至周日 08:00-02:00'));
+    t('周一至周日', days('周一至周日 08:00-02:00') === ALL);
+    t('週一至週日', days('週一至週日 08:00-02:00') === ALL);
+    t('週一到週五（用「到」）', days('週一到週五 19:00-01:00') === '一二三四五');
+    t('每日', days('每日 18:00-02:00') === ALL);
+    t('每天', days('每天 20:00-03:00') === ALL);
+    t('全年無休', days('全年無休 17:00-01:00') === ALL);
+    t('周二至周日（周一休）', days('周二至周日 19:00-02:00（周一休）') === '日二三四五六');
+    t('異體字的收班覆寫與公休', days('20:00-02:00（周五六至03:00，周四休）') === '日一二三五六');
+    const p7 = P('週一至周日 08:00-02:00');
+    t('七天時段都正確', Object.keys(p7.schedule).length === 7 &&
+        Object.values(p7.schedule).every(x => x.open === 480 && x.close === 1560));
+
+    // (4) 必填星號不換行：標題文字與星號在同一個元素內
+    const reqTitles = [...e.$('barForm').querySelectorAll('.f-title')];
+    t('必填標題有兩個', reqTitles.length === 2, reqTitles.length);
+    t('星號與文字在同一元素', reqTitles.every(el => el.textContent.includes('*') && el.textContent.trim().length > 1));
+    t('沒有殘留的 f-req 結構', !e.$('barForm').querySelector('.f-req'));
+}
+
+// ---------------------------------------------------------------- 寫回 repo
+{
+    const e = boot();
+    section('寫回 repo');
+    const T = e.api;
+
+    // base64 往返（data.js 全是中文，這裡最容易出錯）
+    const sample = '{name: "測試吧", city: "台北市", note: "中文與 emoji 🍸 都要正確"},';
+    t('base64 中文往返正確', T.b64decode(T.b64encode(sample)) === sample);
+    const big = sample.repeat(3000);
+    t('大檔案不會爆掉', T.b64decode(T.b64encode(big)) === big, String(big.length));
+
+    // 插入邏輯
+    const src = [
+        'const BARS = [',
+        '',
+        '  // ───── 台北市 ─────',
+        '  {name: "A吧", city: "台北市", type: "經典"},',
+        '  {name: "B吧", city: "台北市", type: "特調"},',
+        '',
+        '  // ───── 台南市 ─────',
+        '  {name: "C吧", city: "台南市", type: "特調"},',
+        '];',
+        ''
+    ].join('\n');
+
+    const r1 = T.insertIntoDataJs(src, { name: '新吧', city: '台北市', type: '經典' });
+    t('插入模式為 insert', r1.mode === 'insert', r1.mode);
+    t('插在台北市區塊內', r1.content.indexOf('新吧') > r1.content.indexOf('台北市 ─') &&
+                          r1.content.indexOf('新吧') < r1.content.indexOf('台南市 ─'));
+    t('沒有動到既有資料', r1.content.includes('A吧') && r1.content.includes('B吧') && r1.content.includes('C吧'));
+    t('結果仍是合法 JS', (() => { try { return new Function(r1.content + '; return BARS.length')() === 4; } catch (x) { return false; } })());
+
+    const r2 = T.insertIntoDataJs(src, { name: 'B吧', city: '台北市', type: '經典特調', price: 2 });
+    t('同名同縣市為 update', r2.mode === 'update', r2.mode);
+    t('取代而非新增', (() => { try { return new Function(r2.content + '; return BARS.length')() === 3; } catch (x) { return false; } })());
+    t('內容確實被更新', r2.content.includes('經典特調') && !r2.content.includes('{name: "B吧", city: "台北市", type: "特調"}'));
+
+    const r3 = T.insertIntoDataJs(src, { name: '高雄吧', city: '高雄市', type: '經典' });
+    t('新縣市會建立區塊', r3.mode === 'new-city', r3.mode);
+    t('新區塊有標題註解', r3.content.includes('// ───── 高雄市 ─────'));
+    t('新縣市插在正確位置（台南後）', r3.content.indexOf('高雄市 ─') > r3.content.indexOf('台南市 ─'));
+    t('新縣市結果合法', (() => { try { return new Function(r3.content + '; return BARS.length')() === 4; } catch (x) { return false; } })());
+
+    const r4 = T.insertIntoDataJs(src, { name: '基隆吧', city: '基隆市', type: '經典' });
+    t('基隆插在台北與台南之間', r4.content.indexOf('基隆市 ─') > r4.content.indexOf('台北市 ─') &&
+                                r4.content.indexOf('基隆市 ─') < r4.content.indexOf('台南市 ─'));
+
+    // 對真實的 data.js 做一次，確認不會弄壞
+    const realSrc = fs.readFileSync(path.join(ROOT, 'data.js'), 'utf8');
+    const rr = T.insertIntoDataJs(realSrc, { name: '真實插入測試吧', city: '宜蘭縣', type: '特調', price: 2 });
+    const rebuilt = new Function(rr.content + '; return BARS;')();
+    t('真實 data.js 插入後仍可解析', Array.isArray(rebuilt));
+    t('真實 data.js 筆數 +1', rebuilt.length === T.BARS.length + 1, rebuilt.length + ' vs ' + (T.BARS.length + 1));
+    t('新店歸在宜蘭縣', rebuilt.filter(b => b.city === '宜蘭縣').some(b => b.name === '真實插入測試吧'));
+    t('PRICE_TIERS 未受影響', rr.content.includes('PRICE_TIERS'));
+
+    // 沒設定權杖時的行為
+    e.click(e.$('addBtn'));
+    e.$('barForm').elements.name.value = 'X吧';
+    e.$('barForm').elements.city.value = '台北市';
+    e.input(e.$('barForm'));
+    e.click(e.$('formPush'));
+    t('未設定權杖會提示', e.$('toast').textContent.includes('權杖'), e.$('toast').textContent);
+    t('並展開設定區塊', e.$('ghBox').open);
+    t('repo 欄位有預設值', e.$('ghRepo').value === 'Sid-EN/Bar_Hopping', e.$('ghRepo').value);
 }
 
 console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');

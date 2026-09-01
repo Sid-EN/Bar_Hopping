@@ -167,7 +167,8 @@
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
         .form-grid label { display: flex; flex-direction: column; gap: 5px; color: var(--gold); font-size: 0.82rem; font-weight: bold; }
         .form-grid .f-wide { grid-column: 1 / -1; }
-        .form-grid .f-req span { color: var(--closed); }
+        .form-grid .f-title { display: block; }
+        .form-grid .f-title i { color: var(--closed); font-style: normal; }
         .form-grid input[type=text], .form-grid input[type=number],
         .form-grid select, .form-grid textarea {
             width: 100%; padding: 9px 11px; background: #2c2c2c; border: 1px solid #444;
@@ -198,6 +199,23 @@
         html[data-theme="light"] .form-grid textarea { background: #fff; border-color: #cfc7b2; }
         html[data-theme="light"] .form-errors { color: #a03030; }
         html[data-theme="light"] .custom-badge { background: #dcecf7; color: #1c5a80; border-color: #7fb3d5; }
+
+        /* GitHub 寫回設定 */
+        .gh-box { margin-top: 18px; border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+        .gh-box summary { color: var(--gold); font-size: 0.85rem; font-weight: bold; cursor: pointer; }
+        .gh-fields { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+        .gh-fields label { display: flex; flex-direction: column; gap: 5px; color: var(--gold); font-size: 0.82rem; font-weight: bold; }
+        .gh-fields input { width: 100%; padding: 9px 11px; background: #2c2c2c; border: 1px solid #444;
+                           color: var(--text); border-radius: 8px; font-size: 0.88rem; font-family: inherit; font-weight: normal; }
+        .gh-fields input:focus { border-color: var(--gold); outline: none; }
+        .gh-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .gh-status { font-size: 0.78rem; color: var(--muted); }
+        .gh-status.ok { color: var(--open); }
+        .gh-status.err { color: var(--closed); }
+        .gh-help { color: var(--muted); font-size: 0.75rem; line-height: 1.7; }
+        .gh-help b { color: #bbb; }
+        .gh-warn { color: var(--gold) !important; }
+        html[data-theme="light"] .gh-fields input { background: #fff; border-color: #cfc7b2; }
 
         /* 縣市分區頁籤 */
         .city-nav { margin-bottom: 24px; }
@@ -496,10 +514,10 @@
 
         <form id="barForm" novalidate>
             <div class="form-grid">
-                <label class="f-req">店名 <span>*</span>
+                <label><span class="f-title">店名 <i>*</i></span>
                     <input type="text" name="name" required placeholder="例：Bar Weekend" autocomplete="off">
                 </label>
-                <label class="f-req">縣市 <span>*</span>
+                <label><span class="f-title">縣市 <i>*</i></span>
                     <select name="city" required></select>
                 </label>
                 <label>行政區
@@ -575,16 +593,43 @@
             <div class="form-preview" id="formPreview"></div>
 
             <div class="modal-actions">
-                <button type="submit" class="btn" id="formSave">儲存到這台裝置</button>
+                <button type="submit" class="btn" id="formSave">💾 儲存到這台裝置</button>
+                <button type="button" class="btn" id="formPush">🚀 寫回 repo（所有人都看得到）</button>
                 <button type="button" class="btn btn-ghost" id="formCopy">📋 複製 data.js 格式</button>
                 <button type="button" class="btn btn-ghost danger" id="formDelete" hidden>🗑️ 刪除這筆</button>
             </div>
         </form>
 
+        <details class="gh-box" id="ghBox">
+            <summary>⚙️ GitHub 設定（要「寫回 repo」才需要）</summary>
+            <div class="gh-fields">
+                <label><span class="f-title">Repository</span>
+                    <input type="text" id="ghRepo" placeholder="Sid-EN/Bar_Hopping" autocomplete="off">
+                </label>
+                <label><span class="f-title">存取權杖</span>
+                    <input type="password" id="ghToken" placeholder="github_pat_..." autocomplete="off">
+                </label>
+                <div class="gh-actions">
+                    <button type="button" class="btn btn-ghost" id="ghSave">儲存設定</button>
+                    <button type="button" class="btn btn-ghost" id="ghTest">測試連線</button>
+                    <button type="button" class="btn btn-ghost danger" id="ghClear">清除權杖</button>
+                    <span id="ghStatus" class="gh-status"></span>
+                </div>
+                <div class="gh-help">
+                    <b>怎麼取得：</b>GitHub → Settings → Developer settings →
+                    Personal access tokens → <b>Fine-grained tokens</b> → Generate new token<br>
+                    Repository access 只選這一個 repo，Permissions 只開 <b>Contents: Read and write</b>，
+                    有效期建議設短一點。<br>
+                    <b class="gh-warn">⚠️ 權杖會以明文存在這台瀏覽器的 localStorage。
+                    共用電腦請不要儲存，用完按「清除權杖」。</b>
+                </div>
+            </div>
+        </details>
+
         <p class="list-note">
-            在這裡新增的酒吧只存在你這台裝置的瀏覽器裡，別人看不到。
-            想讓它變成正式資料、所有人都看得到，請按「複製 data.js 格式」，
-            把那一行貼進 repo 的 <code>data.js</code> 對應縣市段落再推上去。
+            <b>💾 儲存到這台裝置</b>：只有你看得到，清除瀏覽器資料就會消失，適合先隨手記下來。<br>
+            <b>🚀 寫回 repo</b>：直接 commit 進 <code>data.js</code>，推上去後所有人都看得到。<br>
+            <b>📋 複製 data.js 格式</b>：不想做上面的設定的話，複製那一行自己貼進 <code>data.js</code> 也一樣。
         </p>
     </div>
 </div>
