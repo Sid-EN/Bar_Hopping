@@ -593,10 +593,9 @@
             <div class="form-preview" id="formPreview"></div>
 
             <div class="modal-actions">
-                <button type="submit" class="btn" id="formSave">💾 儲存到這台裝置</button>
-                <button type="button" class="btn" id="formPush">🚀 寫回 repo（所有人都看得到）</button>
+                <button type="submit" class="btn" id="formPush">🚀 儲存並寫回 repo</button>
                 <button type="button" class="btn btn-ghost" id="formCopy">📋 複製 data.js 格式</button>
-                <button type="button" class="btn btn-ghost danger" id="formDelete" hidden>🗑️ 刪除這筆</button>
+                <button type="button" class="btn btn-ghost danger" id="formDelete" hidden>🗑️ 從 repo 刪除</button>
             </div>
         </form>
 
@@ -608,6 +607,7 @@
                 </label>
                 <label><span class="f-title">存取權杖</span>
                     <input type="password" id="ghToken" placeholder="github_pat_..." autocomplete="off">
+                    <span class="f-hint" id="ghTokenHint">貼上後按「儲存設定」。之後這裡只會顯示遮蔽後的樣子，不會再顯示完整內容。</span>
                 </label>
                 <div class="gh-actions">
                     <button type="button" class="btn btn-ghost" id="ghSave">儲存設定</button>
@@ -618,10 +618,10 @@
                 <div class="gh-help">
                     <b>怎麼取得：</b>GitHub → Settings → Developer settings →
                     Personal access tokens → <b>Fine-grained tokens</b> → Generate new token<br>
-                    Repository access 只選這一個 repo，Permissions 只開 <b>Contents: Read and write</b>，
-                    有效期建議設短一點。<br>
-                    <b class="gh-warn">⚠️ 權杖會以明文存在這台瀏覽器的 localStorage。
-                    共用電腦請不要儲存，用完按「清除權杖」。</b>
+                    Repository access 只選這一個 repo，Permissions 只開 <b>Contents: Read and write</b>。<br>
+                    <b class="gh-warn">⚠️ 權杖以明文存在這台瀏覽器的 localStorage，
+                    能操作這台電腦的人就拿得到。共用電腦請勿儲存，用完按「清除權杖」。
+                    絕對不要把權杖寫進程式碼——這個網站是公開的，等於直接把它公布出去。</b>
                 </div>
             </div>
         </details>

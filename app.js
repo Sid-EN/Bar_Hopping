@@ -171,10 +171,9 @@ function loadStore() {
         const raw = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
         return {
             want: raw.want || {}, visited: raw.visited || {},
-            route: Array.isArray(raw.route) ? raw.route : [],
-            custom: Array.isArray(raw.custom) ? raw.custom : []
+            route: Array.isArray(raw.route) ? raw.route : []
         };
-    } catch (e) { return { want: {}, visited: {}, route: [], custom: [] }; }
+    } catch (e) { return { want: {}, visited: {}, route: [] }; }
 }
 function saveStore() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* 無痕模式等情況，忽略 */ }
@@ -210,22 +209,30 @@ const overlay = document.getElementById('modalOverlay');
 const modalContent = document.getElementById('modalContent');
 const $ = id => document.getElementById(id);
 
-// data.js 的原始資料，使用者自訂的酒吧會疊在這之上
-const BASE_BARS = BARS.slice();
 const CITY_ORDER = REGIONS.reduce((a, r) => a.concat(r.cities), []);
 const byKey = {};
 
+// 依縣市重新分組並重建索引。寫回 repo 成功後會呼叫，讓畫面立刻反映變更，
+// 不必等 GitHub Pages 重新部署。
 function rebuildBars() {
-    BARS.length = 0;
-    for (const b of BASE_BARS) BARS.push(b);
-    for (const b of (store.custom || [])) BARS.push({ ...b, _custom: true });
-    // 依縣市重新分組（sort 是穩定的，同縣市內原有順序不變，自訂的排在該縣市最後）
     BARS.sort((a, b) => CITY_ORDER.indexOf(a.city) - CITY_ORDER.indexOf(b.city));
     BARS.forEach((b, i) => { b._id = i; });
     for (const k of Object.keys(byKey)) delete byKey[k];
     for (const b of BARS) byKey[barKey(b)] = b;
 }
 rebuildBars();
+
+// 比對店名是否「實質相同」：忽略大小寫、空白與常見標點，
+// 避免「Bar Weekend」「BAR  Weekend」「Bar-Weekend」被當成三間不同的店。
+const normName = s => String(s || '').toLowerCase()
+    .replace(/[\s'’`．.·、，,\-_–—&＆()（）]/g, '');
+
+// 在給定的清單裡找出實質同名同縣市的店（exceptKey 是正在編輯的那筆，不算重複）
+function findDuplicate(list, name, city, exceptKey) {
+    const n = normName(name);
+    return list.find(b => b.city === city && normName(b.name) === n &&
+                          `${b.name}|${b.city}` !== exceptKey);
+}
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const isFriend = b => b.friend || (b.note || '').includes('脆友推薦');
@@ -338,7 +345,6 @@ function sortBars(list, mode) {
 // ===== 卡片 =====
 function renderCard(b, now) {
     const badges = [];
-    if (b._custom) badges.push('<span class="custom-badge">✎ 我新增的</span>');
     if (statusText(b)) badges.push(`<span class="status-badge">⚠️ ${statusText(b)}</span>`);
     if (b.special) badges.push('<span class="special-badge">⭐ 私心推薦</span>');
     if (hasAward(b)) badges.push('<span class="award-badge">🏆 獲獎名店</span>');
@@ -405,7 +411,6 @@ function openDetail(id) {
     if (b.purpose) rows.push(['適合場合', esc(b.purpose)]);
 
     const tags = [];
-    if (b._custom) tags.push('<span class="custom-badge">✎ 我新增的</span>');
     if (statusText(b)) tags.push(`<span class="status-badge">⚠️ ${statusText(b)}</span>`);
     if (b.special) tags.push('<span class="special-badge">⭐ 私心推薦</span>');
     if (isFriend(b)) tags.push('<span class="tag tag-friend">🧡 脆友推薦</span>');
@@ -455,7 +460,7 @@ function openDetail(id) {
             <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${mapQuery(b)}" target="_blank" rel="noopener">🗺️ 在 Google Maps 開啟</a>
             ${b.phone ? `<a class="btn btn-ghost" href="tel:${esc(b.phone.replace(/[^0-9+]/g, ''))}">☎️ 撥打電話</a>` : ''}
             <button class="btn btn-ghost" data-act="card" data-id="${b._id}">🖼️ 產生分享圖</button>
-            ${b._custom ? `<button class="btn btn-ghost" data-act="edit" data-id="${b._id}">✏️ 編輯</button>` : ''}
+            <button class="btn btn-ghost" data-act="edit" data-id="${b._id}">✏️ 編輯資料</button>
         </div>`;
 
     overlay.hidden = false;
@@ -666,10 +671,8 @@ function importBackup(file) {
             if (!d || typeof d !== 'object') throw new Error('格式不對');
             store.want = d.want && typeof d.want === 'object' ? d.want : {};
             store.visited = d.visited && typeof d.visited === 'object' ? d.visited : {};
-            store.custom = Array.isArray(d.custom) ? d.custom.filter(b => b && b.name && b.city) : [];
-            rebuildBars();
             store.route = Array.isArray(d.route) ? d.route.filter(k => byKey[k]) : [];
-            saveStore(); renderCityNav(); updateDistrictOptions(); renderChips(); renderList(); update();
+            saveStore(); renderList(); update();
             toast('備份已匯入');
         } catch (e) { toast('匯入失敗：檔案格式不正確'); }
     };
@@ -728,8 +731,13 @@ function validateBar(b, originalKey) {
     else if (!CITY_ORDER.includes(b.city)) errs.push(`縣市「${b.city}」不在清單中`);
 
     if (b.name && b.city) {
-        const key = `${b.name}|${b.city}`;
-        if (key !== originalKey && byKey[key]) errs.push(`「${b.name}」在${b.city}已經有一筆了，請換個名字或確認是否重複`);
+        // 用正規化後的店名比對，「Bar Weekend」和「BAR  Weekend」會被視為同一間
+        const dup = findDuplicate(BARS, b.name, b.city, originalKey);
+        if (dup) {
+            errs.push(dup.name === b.name
+                ? `「${b.name}」在${b.city}已經有一筆了，若要修改請改用編輯`
+                : `${b.city}已經有「${dup.name}」，看起來是同一間，請確認是否重複`);
+        }
     }
     if (b.type && !VALID_TYPES.includes(b.type)) errs.push('酒類不合法');
     if (b.purpose && !VALID_PURPOSES.includes(b.purpose)) errs.push('適合場合不合法');
@@ -804,7 +812,7 @@ function validateNow() {
         box.hidden = false;
         box.innerHTML = '<b>還有幾個地方要修：</b><ul>' + errs.map(e => `<li>${esc(e)}</li>`).join('') + '</ul>';
     } else box.hidden = true;
-    $('formSave').disabled = errs.length > 0;
+    $('formPush').disabled = errs.length > 0;
 }
 
 function openForm(bar) {
@@ -818,18 +826,25 @@ function openForm(bar) {
     $('formTitle').textContent = bar ? '✏️ 編輯酒吧' : '➕ 新增酒吧';
     $('formDelete').hidden = !bar;
 
+    // 一律走這個函式賦值：null / undefined / NaN 都轉成空字串，
+    // 這樣沒有資料的欄位會留白並顯示灰色範例，不會出現 "null" 這種字樣。
+    const setVal = (name, v) => {
+        const el = f.elements[name];
+        if (!el) return;
+        el.value = (v === undefined || v === null || (typeof v === 'number' && isNaN(v))) ? '' : String(v);
+    };
+
     if (bar) {
         for (const k of ['name', 'city', 'district', 'type', 'purpose', 'style', 'budget',
-                         'address', 'phone', 'hours', 'note']) {
-            if (f.elements[k]) f.elements[k].value = bar[k] || '';
+                         'address', 'phone', 'hours', 'note', 'price', 'rating', 'ratingCount', 'lat', 'lng']) {
+            setVal(k, bar[k]);
         }
-        for (const k of ['price', 'rating', 'ratingCount', 'lat', 'lng']) {
-            if (f.elements[k]) f.elements[k].value = bar[k] !== undefined ? bar[k] : '';
-        }
-        f.elements.awards.value = (bar.awards || []).join('\n');
-        f.elements.special.checked = !!bar.special;
-    } else if (currentCity !== 'all') {
-        f.elements.city.value = currentCity;     // 從某個縣市頁籤按新增，就預選那個縣市
+        setVal('awards', Array.isArray(bar.awards) ? bar.awards.join('\n') : '');
+        f.elements.special.checked = bar.special === true;
+    } else {
+        for (const el of f.elements) if (el.name) setVal(el.name, '');
+        f.elements.special.checked = false;
+        if (currentCity !== 'all') setVal('city', currentCity);   // 從縣市頁籤按新增就預選該縣市
     }
 
     refreshForm();
@@ -851,38 +866,35 @@ function closeForm(force) {
     return true;
 }
 
-function saveForm(e) {
-    if (e) e.preventDefault();
-    const b = readForm();
-    const errs = validateBar(b, editingKey);
-    if (errs.length) { validateNow(); renderPreview(); return; }
-
-    store.custom = store.custom || [];
-    if (editingKey) {
-        const i = store.custom.findIndex(x => `${x.name}|${x.city}` === editingKey);
-        if (i >= 0) store.custom[i] = b; else store.custom.push(b);
-    } else {
-        store.custom.push(b);
+// 寫回 repo 成功後，同步更新記憶體裡的 BARS，讓畫面立刻反映變更。
+// （GitHub Pages 重新部署要一分鐘左右，不這樣做的話會覺得沒生效。）
+function applyLocalChange(bar, oldKey) {
+    if (oldKey) {
+        const i = BARS.findIndex(b => barKey(b) === oldKey);
+        if (i >= 0) BARS.splice(i, 1);
+        // 店名改了的話，收藏／打卡／路線的 key 也要跟著搬
+        const newKey = barKey(bar);
+        if (newKey !== oldKey) {
+            if (store.want[oldKey]) { store.want[newKey] = store.want[oldKey]; delete store.want[oldKey]; }
+            if (store.visited[oldKey]) { store.visited[newKey] = store.visited[oldKey]; delete store.visited[oldKey]; }
+            store.route = store.route.map(k => k === oldKey ? newKey : k);
+            saveStore();
+        }
     }
-    saveStore();
+    if (bar) BARS.push({ ...bar });
     rebuildBars();
     renderCityNav(); updateDistrictOptions(); renderChips(); update();
-    const wasEdit = !!editingKey;
-    closeForm(true);
-    toast(wasEdit ? `已更新「${b.name}」` : `已新增「${b.name}」🍸`);
 }
 
-function deleteCustom(key) {
-    if (!confirm('確定要刪除這筆自訂酒吧嗎？此動作無法復原。')) return;
-    store.custom = (store.custom || []).filter(x => `${x.name}|${x.city}` !== key);
+function removeLocal(key) {
+    const i = BARS.findIndex(b => barKey(b) === key);
+    if (i >= 0) BARS.splice(i, 1);
     delete store.want[key];
     delete store.visited[key];
     store.route = store.route.filter(k => k !== key);
     saveStore();
     rebuildBars();
     renderCityNav(); updateDistrictOptions(); renderChips(); update();
-    closeForm(true);
-    toast('已刪除');
 }
 
 async function copyDataJs() {
@@ -959,14 +971,44 @@ async function ghFetch(path, opts) {
 }
 
 // 把一行酒吧資料插進 data.js 的對應縣市段落；同名同縣市已存在就取代那一行
-function insertIntoDataJs(src, bar) {
+const escRe = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const splitKey = k => { const i = k.lastIndexOf('|'); return [k.slice(0, i), k.slice(i + 1)]; };
+
+// 找出 data.js 裡某一間店所在的那一行
+const lineRe = (name, city) => new RegExp(
+    `^\\s*\\{name: ${escRe(JSON.stringify(name))}, city: ${escRe(JSON.stringify(city))}[,}].*$`, 'm');
+
+// 直接把抓下來的 data.js 執行一次取得清單，這樣才能用正規化店名判斷重複，
+// 而不只是比對字面上完全相同的名字。
+function parseDataJs(src) {
+    try { return new Function(src + '; return BARS;')(); } catch (e) { return null; }
+}
+
+// repo 裡是不是已經有實質相同的店了？（別人剛加過、或自己重複送出）
+function findDuplicateInSource(src, bar, oldKey) {
+    const list = parseDataJs(src);
+    if (!list) return null;
+    return findDuplicate(list, bar.name, bar.city, oldKey) || null;
+}
+
+function insertIntoDataJs(src, bar, oldKey) {
     const line = toDataJsLine(bar);
     const marker = c => `  // ───── ${c} ─────`;
 
-    // 已經有同一間了嗎（用 name + city 判斷）
-    const escRe = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const existing = new RegExp(
-        `^\\s*\\{name: ${escRe(JSON.stringify(bar.name))}, city: ${escRe(JSON.stringify(bar.city))}[,}].*$`, 'm');
+    // 編輯模式：先處理舊的那一行
+    if (oldKey) {
+        const [oldName, oldCity] = splitKey(oldKey);
+        const re = lineRe(oldName, oldCity);
+        if (re.test(src)) {
+            // 縣市沒變就直接就地取代，順序不會亂跑
+            if (oldCity === bar.city) return { content: src.replace(re, line), mode: 'update' };
+            // 換了縣市：先刪掉舊行，再照新縣市重新插入
+            src = src.split('\n').filter(l => !re.test(l)).join('\n');
+        }
+    }
+
+    // 同名同縣市已存在就取代，避免產生兩筆一樣的
+    const existing = lineRe(bar.name, bar.city);
     if (existing.test(src)) {
         return { content: src.replace(existing, line), mode: 'update' };
     }
@@ -1020,8 +1062,22 @@ async function pushToRepo() {
         for (let attempt = 0; attempt < 2; attempt++) {
             const file = await ghFetch('contents/data.js');
             const src = b64decode(file.content);
-            const { content, mode } = insertIntoDataJs(src, bar);
 
+            // 以 repo 上的最新內容再檢查一次重複。
+            // 本機的 BARS 只是頁面載入當下的快照，別人在那之後新增的看不到。
+            const dup = findDuplicateInSource(src, bar, editingKey);
+            if (dup) {
+                const sameName = dup.name === bar.name;
+                const msg = sameName
+                    ? `repo 裡已經有「${dup.name}」（${dup.city}）了。\n\n要用你現在填的內容覆蓋它嗎？`
+                    : `repo 裡已經有「${dup.name}」（${dup.city}），看起來和你要新增的「${bar.name}」是同一間。\n\n` +
+                      `按「確定」會覆蓋成你填的內容；按「取消」則不做任何事。`;
+                if (!confirm(msg)) { toast('已取消，沒有寫入任何東西'); break; }
+                // 使用者確認要覆蓋，就把舊的那一筆當成編輯對象
+                editingKey = `${dup.name}|${dup.city}`;
+            }
+
+            const { content, mode } = insertIntoDataJs(src, bar, editingKey);
             if (content === src) { toast('data.js 裡已經有一模一樣的內容了'); break; }
 
             const verb = mode === 'update' ? '更新' : '新增';
@@ -1034,12 +1090,7 @@ async function pushToRepo() {
                         sha: file.sha
                     })
                 });
-                // 寫回成功，本機那份自訂資料就不需要了（避免同一間出現兩次）
-                const key = `${bar.name}|${bar.city}`;
-                store.custom = (store.custom || []).filter(x => `${x.name}|${x.city}` !== key);
-                saveStore();
-                rebuildBars();
-                renderCityNav(); updateDistrictOptions(); renderChips(); update();
+                applyLocalChange(bar, editingKey);
                 closeForm(true);
 
                 const url = res.commit && res.commit.html_url;
@@ -1063,6 +1114,52 @@ async function pushToRepo() {
     }
 }
 
+// 從 repo 的 data.js 刪掉一整行
+async function deleteFromRepo(key) {
+    const [name, city] = splitKey(key);
+    if (!loadGh().token) {
+        $('ghBox').open = true;
+        toast('刪除需要先設定 GitHub 存取權杖');
+        return;
+    }
+    if (!confirm(`確定要從 data.js 刪除「${name}」（${city}）嗎？\n\n這會直接提交到 repo，所有人都會看不到這間店。`)) return;
+
+    const btn = $('formDelete');
+    btn.disabled = true;
+    try {
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const file = await ghFetch('contents/data.js');
+            const src = b64decode(file.content);
+            const re = lineRe(name, city);
+            if (!re.test(src)) { toast('repo 的 data.js 裡找不到這一筆'); break; }
+            const content = src.split('\n').filter(l => !re.test(l)).join('\n');
+            try {
+                await ghFetch('contents/data.js', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        message: `刪除酒吧：${name}（${city}）\n\n由網站的編輯表單提交`,
+                        content: b64encode(content),
+                        sha: file.sha
+                    })
+                });
+                removeLocal(key);
+                closeForm(true);
+                setGhStatus('已刪除並提交', 'ok');
+                toast('已從 repo 刪除，Pages 大約一分鐘後更新');
+                break;
+            } catch (e) {
+                if (e.message === 'CONFLICT' && attempt === 0) continue;
+                throw e;
+            }
+        }
+    } catch (e) {
+        setGhStatus(e.message, 'err');
+        toast('刪除失敗：' + e.message);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
 function setGhStatus(msg, kind) {
     const el = $('ghStatus');
     if (!el) return;
@@ -1081,15 +1178,29 @@ async function testGh() {
     }
 }
 
+const MASK = '\u2022'.repeat(12);     // 代表「已存在但不顯示」的佔位字串
+
 function saveGhFromForm() {
-    saveGh({ repo: $('ghRepo').value.trim() || GH_DEFAULT_REPO, token: $('ghToken').value.trim() });
+    const typed = $('ghToken').value.trim();
+    const g = loadGh();
+    saveGh({
+        repo: $('ghRepo').value.trim() || GH_DEFAULT_REPO,
+        // 欄位還是遮蔽佔位字串代表沒改動，沿用原本的權杖
+        token: (typed && typed !== MASK) ? typed : g.token
+    });
 }
 
 function fillGhForm() {
     const g = loadGh();
     $('ghRepo').value = g.repo;
-    $('ghToken').value = g.token;
-    setGhStatus(g.token ? '已設定權杖' : '尚未設定權杖');
+    // 不把權杖原文放回畫面上，避免被旁邊的人看到或被其他腳本讀走
+    $('ghToken').value = g.token ? MASK : '';
+    $('ghTokenHint').textContent = g.token
+        ? `已儲存（結尾 …${g.token.slice(-4)}）。要更換請直接貼上新的權杖再按儲存。`
+        : '貼上後按「儲存設定」。之後這裡只會顯示遮蔽後的樣子，不會再顯示完整內容。';
+    setGhStatus(g.token ? '✓ 已連線設定' : '尚未設定權杖', g.token ? 'ok' : '');
+    // 已經設定好就把設定區收起來，平常不用再看到它
+    $('ghBox').open = !g.token;
 }
 
 // ===== 年度回顧 =====
@@ -1712,19 +1823,24 @@ $('addBtn').addEventListener('click', () => openForm());
 $('formClose').addEventListener('click', () => closeForm());
 // 表單不因點到背景而關閉：誤觸一次就整份資料不見，代價太大。
 // 要關請按右上角 × 或 Esc，有未儲存內容時還會再確認一次。
-$('barForm').addEventListener('submit', saveForm);
+$('barForm').addEventListener('submit', e => { e.preventDefault(); pushToRepo(); });
 $('barForm').addEventListener('input', refreshForm);
 $('barForm').addEventListener('change', refreshForm);
 $('formCopy').addEventListener('click', copyDataJs);
-$('formPush').addEventListener('click', pushToRepo);
-$('ghSave').addEventListener('click', () => { saveGhFromForm(); setGhStatus('設定已儲存', 'ok'); });
+$('formPush').addEventListener('click', e => { e.preventDefault(); pushToRepo(); });
+$('ghSave').addEventListener('click', () => {
+    saveGhFromForm();
+    fillGhForm();
+    if (loadGh().token) setGhStatus('✓ 設定已儲存，已連線', 'ok');
+    else setGhStatus('已儲存 repo 設定，但還沒有權杖', '');
+});
 $('ghTest').addEventListener('click', testGh);
 $('ghClear').addEventListener('click', () => {
     saveGh({ repo: $('ghRepo').value.trim() || GH_DEFAULT_REPO, token: '' });
-    $('ghToken').value = '';
+    fillGhForm();
     setGhStatus('權杖已清除', 'ok');
 });
-$('formDelete').addEventListener('click', () => { if (editingKey) deleteCustom(editingKey); });
+$('formDelete').addEventListener('click', () => { if (editingKey) deleteFromRepo(editingKey); });
 
 // 主題、定位、隨機、年度回顧
 $('themeBtn').addEventListener('click', toggleTheme);

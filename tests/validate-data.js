@@ -29,6 +29,10 @@ const KNOWN_KEYS = new Set(['name', 'city', 'district', 'type', 'purpose', 'styl
 const errors = [];
 const warnings = [];
 const seen = new Map();
+const seenNorm = new Map();
+
+// 忽略大小寫、空白與常見標點後比對，抓出「Bar Weekend」與「BAR  Weekend」這種實質重複
+const normName = s => String(s || '').toLowerCase().replace(/[\s'’`．.·、，,\-_–—&＆()（）]/g, '');
 
 BARS.forEach((b, i) => {
     const at = `第 ${i + 1} 筆「${b.name || '(無店名)'}」`;
@@ -39,6 +43,11 @@ BARS.forEach((b, i) => {
     const key = `${b.name}|${b.city}`;
     if (seen.has(key)) errors.push(`${at}：與第 ${seen.get(key) + 1} 筆重複（同名同縣市）`);
     else seen.set(key, i);
+
+    const nkey = `${normName(b.name)}|${b.city}`;
+    if (seenNorm.has(nkey) && !seen.has(key)) {
+        errors.push(`${at}：與第 ${seenNorm.get(nkey) + 1} 筆「${BARS[seenNorm.get(nkey)].name}」看起來是同一間`);
+    } else if (!seenNorm.has(nkey)) seenNorm.set(nkey, i);
 
     if (b.type !== undefined && !TYPES.includes(b.type)) errors.push(`${at}：type「${b.type}」不合法，須為 ${TYPES.join('/')}`);
     if (b.purpose !== undefined && !PURPOSES.includes(b.purpose)) errors.push(`${at}：purpose「${b.purpose}」不合法`);

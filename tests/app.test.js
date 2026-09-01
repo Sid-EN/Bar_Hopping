@@ -86,9 +86,10 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         ' handleAction, update, renderRoute, renderList, openList, selectCity, stateToUrl, autoSortRoute,' +
         ' parseHours, openState, selectedTypes, selectedTraits, distanceKm, routeSchedule, yearStats,' +
         ' sinceText, myNote, visitLog, applyTheme, toggleTheme, randomPick, shareCard, lastFiltered,' +
-        ' budgetText, statusText, openForm, closeForm, saveForm, readForm, validateBar, toDataJsLine,' +
-        ' rebuildBars, deleteCustom, refreshForm, renderPreview, validateNow, CITY_ORDER,' +
-        ' insertIntoDataJs, b64encode, b64decode, loadGh, saveGh, formDirty, snapshotForm };');
+        ' budgetText, statusText, openForm, closeForm, readForm, validateBar, toDataJsLine, pushToRepo,' +
+        ' rebuildBars, refreshForm, renderPreview, validateNow, CITY_ORDER, normName, findDuplicate,' +
+        ' insertIntoDataJs, findDuplicateInSource, parseDataJs, b64encode, b64decode,' +
+        ' loadGh, saveGh, fillGhForm, saveGhFromForm, formDirty, snapshotForm, applyLocalChange, removeLocal };');
 
     const api = window.__t;
     return {
@@ -491,158 +492,6 @@ function boot(url = 'https://example.com/index.html', seed = null) {
 }
 
 
-// ---------------------------------------------------------------- 新增酒吧
-{
-    const e = boot();
-    section('新增酒吧');
-    const T = e.api, W = e.window;
-    const base = T.BARS.length;
-
-    e.click(e.$('addBtn'));
-    t('表單開啟', !e.$('formOverlay').hidden);
-    t('標題為新增', e.$('formTitle').textContent.includes('新增'));
-    t('刪除鍵隱藏', e.$('formDelete').hidden);
-    t('縣市選單已填入', e.$('barForm').elements.city.options.length === T.CITY_ORDER.length + 1);
-    t('未填時儲存鍵停用', e.$('formSave').disabled);
-
-    const f = e.$('barForm');
-    const fill = (name, val) => { f.elements[name].value = val; e.input(f); };
-    const check = (name, val) => { f.elements[name].checked = val; f.dispatchEvent(new W.Event('change', { bubbles: true })); };
-
-    fill('name', '測試酒吧');
-    t('只填店名仍不能存（缺縣市）', e.$('formSave').disabled);
-    t('錯誤訊息提到縣市', e.$('formErrors').textContent.includes('縣市'));
-    fill('city', '台北市');
-    t('填完必填即可儲存', !e.$('formSave').disabled);
-    // 預覽是 debounce 的（打字時不會每個字元都重畫），這裡直接觸發一次來驗證內容
-    t('打字當下先不重畫預覽', !e.$('formPreview').innerHTML.includes('測試酒吧'));
-    T.renderPreview();
-    t('延後後預覽出現卡片', e.$('formPreview').innerHTML.includes('測試酒吧'));
-
-    // 各欄位驗證
-    fill('rating', '7');
-    t('評分超過 5 被擋', e.$('formSave').disabled && e.$('formErrors').textContent.includes('0 到 5'));
-    fill('rating', '4.6');
-    t('合法評分通過', !e.$('formSave').disabled);
-    fill('lat', '25.04');
-    t('只填緯度被擋', e.$('formSave').disabled && e.$('formErrors').textContent.includes('都填'));
-    fill('lng', '121.55');
-    t('座標成對通過', !e.$('formSave').disabled);
-    fill('lat', '48.8');
-    t('座標超出台灣被擋', e.$('formSave').disabled && e.$('formErrors').textContent.includes('台灣範圍'));
-    fill('lat', '25.04');
-
-    // 重複店名
-    const exist = T.BARS.find(b => b.city === '台北市');
-    fill('name', exist.name);
-    t('同縣市重複店名被擋', e.$('formSave').disabled && e.$('formErrors').textContent.includes('已經有一筆'));
-    fill('name', '測試酒吧');
-
-    // 營業時間即時回饋
-    fill('hours', '週二至週日 19:00–02:00（週一休）');
-    t('看得懂的營業時間給綠燈', e.$('hoursHint').className.includes('good'), e.$('hoursHint').className);
-    t('回饋顯示解析結果', e.$('hoursHint').textContent.includes('二三四五六'), e.$('hoursHint').textContent);
-    fill('hours', '營業至02:00');
-    t('看不懂的營業時間給警告', e.$('hoursHint').className.includes('warn'));
-    t('警告說明會顯示時間未知', e.$('hoursHint').textContent.includes('時間未知'));
-    fill('hours', '20:00–02:00（週一休）');
-
-    // 其餘欄位
-    fill('district', '大安區'); fill('type', '經典特調'); fill('purpose', '一個人');
-    fill('style', '日式'); fill('price', '2'); fill('address', '台北市大安區測試路1號');
-    fill('phone', '02-1234-5678'); fill('ratingCount', '320');
-    fill('awards', "Asia's 50 Best Bars 2025 #40\n某某獎");
-    fill('note', '測試用的介紹文字');
-    check('special', true);
-
-    const draft = T.readForm();
-    t('空欄位不會被存成空字串', !('budget' in draft), JSON.stringify(draft.budget));
-    t('獲獎解析成陣列', Array.isArray(draft.awards) && draft.awards.length === 2);
-    t('數字欄位轉成數字', typeof draft.price === 'number' && typeof draft.rating === 'number');
-    t('勾選轉成 true', draft.special === true);
-
-    // data.js 格式
-    const line = T.toDataJsLine(draft);
-    t('data.js 格式為單行物件', line.startsWith('  {') && line.endsWith('},'));
-    t('格式可被解析回來', (() => { try { return new Function('return [' + line + '][0]')().name === '測試酒吧'; } catch (x) { return false; } })());
-    t('格式含所有已填欄位', ['name', 'city', 'district', 'type', 'price', 'rating', 'awards', 'special', 'note'].every(k => line.includes(k + ':')));
-
-    // 儲存
-    e.click(e.$('formSave'));
-    t('儲存後表單關閉', e.$('formOverlay').hidden);
-    t('總數 +1', T.BARS.length === base + 1, T.BARS.length + ' vs ' + (base + 1));
-    t('有成功提示', e.$('toast').textContent.includes('已新增'));
-    t('寫入 localStorage', JSON.parse(W.localStorage.getItem('barbible.v1')).custom.length === 1);
-
-    const added = T.byKey['測試酒吧|台北市'];
-    t('可用 key 找到', !!added);
-    t('標記為自訂', added._custom === true);
-    t('出現在清單中', e.$('barGrid').innerHTML.includes('測試酒吧'));
-    t('卡片有自訂標章', e.$('barGrid').innerHTML.includes('custom-badge'));
-    t('歸到正確縣市', e.$('barGrid').innerHTML.indexOf('測試酒吧') > -1 && added.city === '台北市');
-    t('台北市計數 +1', e.$('cityNav').innerHTML.includes('台北市'));
-
-    // 篩選也吃得到
-    e.api.selectCity('台北市');
-    t('縣市篩選涵蓋自訂店', e.$('barGrid').innerHTML.includes('測試酒吧'));
-    e.$('districtFilter').value = '大安區'; e.input(e.$('districtFilter'));
-    t('行政區篩選涵蓋自訂店', e.$('barGrid').innerHTML.includes('測試酒吧'));
-    e.$('districtFilter').value = 'all'; e.input(e.$('districtFilter'));
-    e.api.selectCity('all');
-
-    // 編輯
-    e.click(e.qsa('.bar-card').find(c => c.textContent.includes('測試酒吧')));
-    t('詳細頁有編輯鍵', !!W.document.querySelector('[data-act="edit"]'));
-    e.click(W.document.querySelector('[data-act="edit"]'));
-    t('編輯表單開啟', !e.$('formOverlay').hidden && e.$('formTitle').textContent.includes('編輯'));
-    t('欄位帶入原值', e.$('barForm').elements.name.value === '測試酒吧' && e.$('barForm').elements.price.value === '2');
-    t('獲獎還原成多行', e.$('barForm').elements.awards.value.split('\n').length === 2);
-    t('編輯時顯示刪除鍵', !e.$('formDelete').hidden);
-    t('編輯自己不算重複', !e.$('formSave').disabled);
-    fill('name', '測試酒吧改名');
-    e.click(e.$('formSave'));
-    t('改名後總數不變', T.BARS.length === base + 1, T.BARS.length);
-    t('新名字生效', !!T.byKey['測試酒吧改名|台北市'] && !T.byKey['測試酒吧|台北市']);
-
-    // 刪除
-    e.click(e.qsa('.bar-card').find(c => c.textContent.includes('測試酒吧改名')));
-    e.click(W.document.querySelector('[data-act="edit"]'));
-    e.click(e.$('formDelete'));
-    t('刪除後總數還原', T.BARS.length === base, T.BARS.length);
-    t('清單中已消失', !e.$('barGrid').innerHTML.includes('測試酒吧改名'));
-    t('localStorage 也清掉', JSON.parse(W.localStorage.getItem('barbible.v1')).custom.length === 0);
-}
-
-// ---------------------------------------------------------------- 自訂酒吧的持久化
-{
-    const e = boot();
-    section('自訂酒吧的持久化與備份');
-    const T = e.api, W = e.window;
-    const base = T.BARS.length;
-
-    T.store.custom = [{ name: '持久化測試吧', city: '台南市', district: '中西區', type: '特調', price: 2 }];
-    T.saveStore(); T.rebuildBars(); T.update();
-    t('重建後總數 +1', T.BARS.length === base + 1);
-
-    // 模擬重新整理：把剛才存好的狀態帶進新的環境
-    const saved = JSON.parse(W.localStorage.getItem('barbible.v1'));
-    const e2 = boot('https://example.com/index.html', saved);
-    t('重新載入後仍在', e2.api.BARS.length === base + 1, e2.api.BARS.length);
-    t('資料完整', e2.api.byKey['持久化測試吧|台南市'].district === '中西區');
-    t('台南市可篩到', (() => { e2.api.selectCity('台南市');
-        return e2.$('barGrid').innerHTML.includes('持久化測試吧'); })());
-
-    // 備份匯出含自訂酒吧
-    const backup = saved;
-    t('備份含 custom 欄位', Array.isArray(backup.custom) && backup.custom.length === 1);
-
-    // 自訂店也能收藏與加入路線
-    const k = '持久化測試吧|台南市';
-    e2.api.handleAction('want', k); e2.api.handleAction('route', k); e2.api.update();
-    t('自訂店可收藏', !!e2.api.store.want[k]);
-    t('自訂店可加入路線', e2.api.store.route.includes(k));
-}
-
 // ---------------------------------------------------------------- 這次修的四個問題
 {
     const e = boot();
@@ -763,6 +612,175 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('未設定權杖會提示', e.$('toast').textContent.includes('權杖'), e.$('toast').textContent);
     t('並展開設定區塊', e.$('ghBox').open);
     t('repo 欄位有預設值', e.$('ghRepo').value === 'Sid-EN/Bar_Hopping', e.$('ghRepo').value);
+}
+
+// ---------------------------------------------------------------- 表單欄位不得出現 null
+{
+    const e = boot();
+    section('表單欄位空值處理');
+    const T = e.api;
+    const vals = () => [...e.$('barForm').elements].filter(el => el.name && el.type !== 'checkbox')
+        .map(el => ({ name: el.name, v: el.value }));
+
+    T.openForm();
+    const fresh = vals();
+    t('全新開啟時所有欄位皆為空字串', fresh.every(x => x.v === ''),
+        JSON.stringify(fresh.filter(x => x.v !== '')));
+    t('沒有任何欄位顯示 null/undefined',
+        fresh.every(x => x.v !== 'null' && x.v !== 'undefined' && x.v !== 'NaN'));
+    t('placeholder 仍在（灰色範例不被蓋掉）',
+        e.$('barForm').elements.name.placeholder.length > 0 &&
+        e.$('barForm').elements.address.placeholder.length > 0);
+
+    // 編輯欄位很少的酒吧：沒資料的欄位一樣要留白
+    const sparse = T.BARS.find(b => !b.address && !b.phone && !b.rating && !b.price && !b.style);
+    T.openForm(sparse);
+    const sp = vals();
+    t('稀疏資料不產生 null', sp.every(x => x.v !== 'null' && x.v !== 'undefined' && x.v !== 'NaN'),
+        JSON.stringify(sp.filter(x => ['null', 'undefined', 'NaN'].includes(x.v))));
+    t('沒有的欄位留白', sp.find(x => x.name === 'address').v === '' &&
+                        sp.find(x => x.name === 'rating').v === '');
+    t('有的欄位正確帶入', sp.find(x => x.name === 'name').v === sparse.name);
+
+    // 就算資料裡混進 null，也不能顯示成文字
+    T.openForm({ name: 'Null 測試', city: '台北市', district: null, rating: null,
+                 price: undefined, awards: null, note: null, lat: NaN });
+    const nv = vals();
+    t('欄位值為 null 時轉成空字串', nv.every(x => x.v !== 'null'),
+        JSON.stringify(nv.filter(x => x.v === 'null')));
+    t('NaN 也轉成空字串', nv.find(x => x.name === 'lat').v === '');
+    t('awards 為 null 時留白', nv.find(x => x.name === 'awards').v === '');
+    T.closeForm(true);
+}
+
+// ---------------------------------------------------------------- 防重複
+{
+    const e = boot();
+    section('防止重複新增');
+    const T = e.api;
+
+    t('正規化忽略大小寫', T.normName('Bar Weekend') === T.normName('BAR WEEKEND'));
+    t('正規化忽略空白', T.normName('Bar Weekend') === T.normName('Bar  Weekend'));
+    t('正規化忽略連字號與標點', T.normName('Bar-Weekend') === T.normName('Bar Weekend') &&
+                                 T.normName("INGE'S Bar") === T.normName('INGES Bar'));
+    t('不同店名不會誤判', T.normName('Bar Weekend') !== T.normName('Bar Weekday'));
+
+    const exist = T.BARS.find(b => b.city === '台北市');
+    t('找得到同縣市實質同名的店', !!T.findDuplicate(T.BARS, exist.name.toUpperCase(), '台北市'));
+    t('不同縣市不算重複', !T.findDuplicate(T.BARS, exist.name, '台南市'));
+    t('編輯自己不算重複', !T.findDuplicate(T.BARS, exist.name, '台北市', `${exist.name}|台北市`));
+
+    // 表單層級
+    e.click(e.$('addBtn'));
+    const f = e.$('barForm');
+    f.elements.name.value = exist.name.toUpperCase().replace(/\s/g, '');
+    f.elements.city.value = '台北市';
+    e.input(f);
+    t('大小寫/空白不同的重複會被擋', e.$('formPush').disabled);
+    t('錯誤訊息點出是同一間', e.$('formErrors').textContent.includes('同一間') ||
+                              e.$('formErrors').textContent.includes('已經有'));
+    f.elements.name.value = '絕對不會重複的新店名 ABC';
+    e.input(f);
+    t('改成不重複後可以送出', !e.$('formPush').disabled);
+    T.closeForm(true);
+
+    // 對 repo 內容做的重複檢查（別人剛新增的，本機看不到）
+    const src = [
+        'const BARS = [', '',
+        '  // ───── 台北市 ─────',
+        '  {name: "別人剛加的吧", city: "台北市", type: "經典"},',
+        '];', ''
+    ].join('\n');
+    t('可從 repo 內容解析出清單', Array.isArray(T.parseDataJs(src)));
+    t('偵測到 repo 已有同名店', !!T.findDuplicateInSource(src, { name: '別人剛加的吧', city: '台北市' }));
+    t('偵測到 repo 已有實質同名店', !!T.findDuplicateInSource(src, { name: '別人剛加的 吧', city: '台北市' }));
+    t('沒重複時回傳 null', T.findDuplicateInSource(src, { name: '全新的店', city: '台北市' }) === null);
+    t('編輯自己時不算重複',
+        T.findDuplicateInSource(src, { name: '別人剛加的吧', city: '台北市' }, '別人剛加的吧|台北市') === null);
+
+    // 寫入時同名一律取代，不會產生兩行
+    const r = T.insertIntoDataJs(src, { name: '別人剛加的吧', city: '台北市', type: '特調' });
+    t('同名寫入為取代', r.mode === 'update');
+    t('取代後不會變成兩筆', T.parseDataJs(r.content).length === 1);
+}
+
+// ---------------------------------------------------------------- 編輯與刪除既有酒吧
+{
+    const e = boot();
+    section('編輯既有酒吧');
+    const T = e.api;
+
+    e.click(e.qsa('.bar-card')[0]);
+    const editBtn = e.window.document.querySelector('[data-act="edit"]');
+    t('任何酒吧都能編輯', !!editBtn);
+    e.click(editBtn);
+    t('編輯表單開啟', !e.$('formOverlay').hidden);
+    t('標題為編輯', e.$('formTitle').textContent.includes('編輯'));
+    t('顯示從 repo 刪除鍵', !e.$('formDelete').hidden);
+    t('刪除鍵文字明確', e.$('formDelete').textContent.includes('repo'));
+    t('主要按鈕是寫回 repo', e.$('formPush').textContent.includes('repo'));
+    t('已移除「儲存到這台裝置」', !e.window.document.getElementById('formSave'));
+    T.closeForm(true);
+
+    // 改名時，收藏／打卡／路線的 key 要跟著搬
+    const b0 = T.BARS[0], oldKey = T.barKey(b0);
+    T.handleAction('want', oldKey);
+    T.handleAction('visited', oldKey);
+    T.handleAction('route', oldKey);
+    T.applyLocalChange({ ...b0, name: b0.name + ' 改名版' }, oldKey);
+    const newKey = b0.city ? `${b0.name} 改名版|${b0.city}` : null;
+    t('改名後總數不變', T.BARS.length === 222, T.BARS.length);
+    t('收藏跟著搬到新名字', !!T.store.want[newKey] && !T.store.want[oldKey]);
+    t('打卡紀錄跟著搬', !!T.store.visited[newKey]);
+    t('路線也跟著更新', T.store.route.includes(newKey) && !T.store.route.includes(oldKey));
+
+    // 刪除
+    T.removeLocal(newKey);
+    t('刪除後總數 -1', T.BARS.length === 221, T.BARS.length);
+    t('刪除後收藏一併清掉', !T.store.want[newKey]);
+    t('刪除後不在路線裡', !T.store.route.includes(newKey));
+}
+
+// ---------------------------------------------------------------- 權杖處理
+{
+    const e = boot();
+    section('存取權杖處理');
+    const T = e.api;
+
+    e.click(e.$('addBtn'));
+    t('未設定時設定區塊展開', e.$('ghBox').open);
+    t('權杖欄位為 password 型別', e.$('ghToken').type === 'password');
+    t('repo 有預設值', e.$('ghRepo').value === 'Sid-EN/Bar_Hopping');
+
+    e.$('ghToken').value = 'github_pat_TESTTOKEN1234ABCD';
+    e.click(e.$('ghSave'));
+    t('權杖已儲存', T.loadGh().token === 'github_pat_TESTTOKEN1234ABCD');
+    t('畫面不再顯示權杖原文', !e.$('ghToken').value.includes('TESTTOKEN'), e.$('ghToken').value);
+    t('顯示為遮蔽字元', /^[•]+$/.test(e.$('ghToken').value));
+    t('提示只露出末四碼', e.$('ghTokenHint').textContent.includes('ABCD') &&
+                          !e.$('ghTokenHint').textContent.includes('TESTTOKEN'));
+    t('設定好後區塊自動收合', !e.$('ghBox').open);
+    t('狀態顯示已連線', e.$('ghStatus').textContent.includes('已連線'));
+
+    // 不改動遮蔽欄位再存一次，權杖不能被洗掉
+    e.click(e.$('ghSave'));
+    t('遮蔽狀態下重存不會清掉權杖', T.loadGh().token === 'github_pat_TESTTOKEN1234ABCD');
+
+    // 換新權杖
+    e.$('ghToken').value = 'github_pat_NEWTOKEN5678WXYZ';
+    e.click(e.$('ghSave'));
+    t('可以換成新權杖', T.loadGh().token === 'github_pat_NEWTOKEN5678WXYZ');
+
+    e.click(e.$('ghClear'));
+    t('清除後權杖為空', T.loadGh().token === '');
+    t('清除後欄位也清空', e.$('ghToken').value === '');
+    t('清除後設定區塊展開', e.$('ghBox').open);
+
+    // 權杖不該出現在原始碼裡
+    const appSrc = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+    const htmlSrc = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    t('程式碼裡沒有寫死的權杖',
+        !/gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,}/.test(appSrc + htmlSrc));
 }
 
 console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');
