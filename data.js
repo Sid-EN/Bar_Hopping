@@ -102,7 +102,7 @@ const BARS = [
   {name: "To Infinity & Beyond", city: "台北市", district: "大安區", type: "經典", purpose: "聚會或一個人", awards: ["Asia's 50 Best Bars 2025 #41"], note: "50大酒吧常客"},
   {name: "Kitty Taipei", city: "台北市", district: "大安區", type: "特調", purpose: "聚會", lat: 25.040709, lng: 121.545935, note: "蜂蜜雞翅/沙拉必點｜餐點超好吃"},
   {name: "羊吧", city: "台北市", district: "信義區", type: "特調", purpose: "一個人", lat: 24.98431, lng: 121.561832, note: "紅白酒/清酒多｜脆友推薦"},
-  {name: "Bar Weekend", city: "台北市", district: "大安區", type: "經典特調", purpose: "聚會或一個人", special: true, note: "我的台北前五名"},
+  {name: "Bar Weekend", city: "台北市", district: "大安區", type: "經典特調", purpose: "聚會或一個人", note: "我的台北前五名"},
   {name: "INDULGE", city: "台北市", district: "大安區", type: "經典特調", purpose: "聚會或一個人", lat: 25.039047, lng: 121.54472, awards: ["Asia's 50 Best Bars 2024 #11","World's 50 Best Bars 2019 #21"], note: "台北名店"},
   {name: "深杯子", city: "台北市", district: "大安區", type: "經典特調", purpose: "一個人", lat: 25.001983, lng: 121.599748, note: "脆友推薦"},
   {name: "Drizzle by Fourplay", city: "台北市", district: "大安區", type: "經典特調", purpose: "聚會", note: "脆友推薦"},
