@@ -90,7 +90,7 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         ' rebuildBars, refreshForm, renderPreview, validateNow, CITY_ORDER, normName, findDuplicate,' +
         ' insertIntoDataJs, findDuplicateInSource, parseDataJs, b64encode, b64decode,' +
         ' loadGh, saveGh, fillGhForm, saveGhFromForm, formDirty, snapshotForm, applyLocalChange, removeLocal,' +
-        ' expiryInfo, cleanToken, tokenLooksValid, applyReveal, testGh,' +
+        ' expiryInfo, cleanToken, tokenLooksValid, applyReveal, testGh, DISTRICTS,' +
         ' lastResetPoint, pruneRoute, touchRoute, personalData, syncUp, syncDown, ROUTE_RESET_HOUR };');
 
     const api = window.__t;
@@ -976,6 +976,58 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     // api.github.com 的判斷必須在快取邏輯之前
     t('放行判斷在快取之前',
         sw.indexOf("api.github.com") < sw.indexOf('caches.match(req)'));
+}
+
+
+// ---------------------------------------------------------------- 行政區清單完整性
+{
+    const e = boot();
+    section('行政區清單');
+    const T = e.api;
+
+    // 內政部公告的各縣市行政區數量。少一個就代表清單有缺，篩選會漏掉那一區。
+    const OFFICIAL = {
+        '台北市': 12, '新北市': 29, '基隆市': 7, '桃園市': 13, '新竹市': 3, '新竹縣': 13,
+        '苗栗縣': 18, '台中市': 29, '彰化縣': 26, '南投縣': 13, '雲林縣': 20, '嘉義市': 2,
+        '嘉義縣': 18, '台南市': 37, '高雄市': 38, '屏東縣': 33, '宜蘭縣': 12, '花蓮縣': 13,
+        '台東縣': 16, '澎湖縣': 6, '金門縣': 6, '連江縣': 4
+    };
+    const D = T.DISTRICTS;
+
+    t('涵蓋全部 22 縣市', Object.keys(D).length === 22, Object.keys(D).length);
+    t('CITY_ORDER 裡的縣市都有行政區清單',
+        T.CITY_ORDER.every(c => Array.isArray(D[c]) && D[c].length > 0),
+        T.CITY_ORDER.filter(c => !D[c]).join('、'));
+
+    const wrong = Object.entries(OFFICIAL).filter(([c, n]) => (D[c] || []).length !== n)
+        .map(([c, n]) => `${c} 應有 ${n} 實有 ${(D[c] || []).length}`);
+    t('各縣市行政區數量與官方相符', wrong.length === 0, wrong.join('；'));
+
+    const total = Object.values(D).reduce((a, l) => a + l.length, 0);
+    t('行政區總數為 368', total === 368, total);
+
+    const dups = Object.entries(D)
+        .filter(([, l]) => new Set(l).size !== l.length).map(([c]) => c);
+    t('同一縣市內沒有重複行政區', dups.length === 0, dups.join('、'));
+
+    t('一律使用「台」而非「臺」',
+        !Object.values(D).flat().some(d => d.includes('臺')),
+        Object.values(D).flat().filter(d => d.includes('臺')).join('、'));
+
+    // data.js 裡用到的行政區都必須在清單內，否則篩選會選不到
+    const orphan = T.BARS.filter(b => b.district && !(D[b.city] || []).includes(b.district))
+        .map(b => `${b.city} ${b.district}（${b.name}）`);
+    t('資料中的行政區都在清單內', orphan.length === 0, orphan.join('；'));
+
+    // 篩選下拉：選定縣市時要列出全部行政區，沒資料的標 0 並停用
+    e.api.selectCity('宜蘭縣');
+    const opts = [...e.$('districtFilter').options].slice(1);
+    t('宜蘭縣列出全部 12 區', opts.length === 12, opts.length);
+    t('包含沒有酒吧的行政區', opts.some(o => o.value === '壯圍鄉'));
+    t('沒有酒吧的區標示 0 並停用',
+        opts.filter(o => o.textContent.includes('（0）')).every(o => o.disabled));
+    t('有酒吧的區可以選', opts.some(o => o.value === '羅東鎮' && !o.disabled));
+    e.api.selectCity('all');
 }
 
 console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');

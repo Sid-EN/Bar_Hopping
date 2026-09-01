@@ -36,9 +36,9 @@ const BARS = [
   {name: "綠門老酒吧", city: "台北市", district: "中山區", type: "特調", purpose: "聚會", note: "在地的local酒吧｜老派約會"},
   {name: "Bar Outlander", city: "台北市", district: "中山區", type: "特調", purpose: "聚會", note: "脆友推薦但評價兩極"},
   {name: "Bar ansleep Taipei", city: "台北市", district: "中山區", type: "經典", purpose: "聚會或一個人", note: "日本調酒師回國ㄌ🥲"},
-  {name: "BAR 忠", city: "台北市", district: "中山區", type: "經典", purpose: "一個人", lat: 25.043977, lng: 121.552935, special: true, note: "日本調酒師｜真材實料｜行天宮三本柱"},
-  {name: "心白", city: "台北市", district: "中山區", type: "經典", purpose: "聚會", lat: 25.036971, lng: 121.567907, special: true, note: "清酒吧｜餐點好吃｜行天宮三本柱"},
-  {name: "Light House", city: "台北市", district: "中山區", type: "經典", purpose: "聚會或一個人", special: true, note: "四訪驚喜｜去就對了｜行天宮三本柱"},
+  {name: "BAR 忠", city: "台北市", district: "中山區", type: "經典", purpose: "一個人", lat: 25.043977, lng: 121.552935, note: "日本調酒師｜真材實料｜行天宮三本柱"},
+  {name: "心白", city: "台北市", district: "中山區", type: "經典", purpose: "聚會", lat: 25.036971, lng: 121.567907, note: "清酒吧｜餐點好吃｜行天宮三本柱"},
+  {name: "Light House", city: "台北市", district: "中山區", type: "經典", purpose: "聚會或一個人", note: "四訪驚喜｜去就對了｜行天宮三本柱"},
   {name: "奏 ZOU Listening Bar", city: "台北市", district: "大同區", type: "經典", purpose: "聚會或一個人", note: "脆友推薦"},
   {name: "小小間酒吧", city: "台北市", district: "大同區", type: "經典", purpose: "一個人", lat: 25.048275, lng: 121.508379, note: "脆友推薦"},
   {name: "Como Tú", city: "台北市", district: "大同區", type: "經典", purpose: "一個人", note: "酒友推薦"},
@@ -102,7 +102,7 @@ const BARS = [
   {name: "To Infinity & Beyond", city: "台北市", district: "大安區", type: "經典", purpose: "聚會或一個人", awards: ["Asia's 50 Best Bars 2026 #35"], note: "50大酒吧常客"},
   {name: "Kitty Taipei", city: "台北市", district: "大安區", type: "特調", purpose: "聚會", lat: 25.040709, lng: 121.545935, note: "蜂蜜雞翅/沙拉必點｜餐點超好吃"},
   {name: "羊吧", city: "台北市", district: "信義區", type: "特調", purpose: "一個人", lat: 24.98431, lng: 121.561832, note: "紅白酒/清酒多｜脆友推薦"},
-  {name: "Bar Weekend", city: "台北市", district: "大安區", type: "經典特調", purpose: "聚會或一個人", special: true, note: "我的台北前五名"},
+  {name: "Bar Weekend", city: "台北市", district: "大安區", type: "經典特調", purpose: "聚會或一個人", note: "我的台北前五名"},
   {name: "INDULGE", city: "台北市", district: "大安區", type: "經典特調", purpose: "聚會或一個人", lat: 25.039047, lng: 121.54472, awards: ["Asia's 50 Best Bars 2024 #11","World's 50 Best Bars 2019 #21"], note: "台北名店"},
   {name: "深杯子", city: "台北市", district: "大安區", type: "經典特調", purpose: "一個人", lat: 25.001983, lng: 121.599748, note: "脆友推薦"},
   {name: "Drizzle by Fourplay", city: "台北市", district: "大安區", type: "經典特調", purpose: "聚會", note: "脆友推薦"},
@@ -116,7 +116,7 @@ const BARS = [
   {name: "YiYi 液藝", city: "台北市", district: "大安區", type: "特調", purpose: "一個人", lat: 25.012864, lng: 121.546711, note: "咖啡酒吧｜小眾"},
   {name: "The Fridge bar", city: "台北市", district: "信義區", type: "特調", purpose: "一個人", note: "冰箱門入口｜炸雞比酒紅"},
   {name: "晨箔", city: "台北市", district: "大安區", type: "特調", purpose: "一個人", note: "銀波二店｜拉麵必吃"},
-  {name: "Bar Between", city: "台北市", district: "大安區", type: "經典", purpose: "一個人", lat: 25.03902, lng: 121.522002, special: true, note: "日本調酒師｜台北前五名"},
+  {name: "Bar Between", city: "台北市", district: "大安區", type: "經典", purpose: "一個人", lat: 25.03902, lng: 121.522002, note: "日本調酒師｜台北前五名"},
   {name: "Bar Three Piece", city: "台北市", district: "信義區", type: "經典", purpose: "一個人", note: "日本調酒師｜精緻秀氣"},
   {name: "Liowl", city: "台北市", district: "大安區", type: "經典", purpose: "一個人", note: "有貓｜資深酒客推"},
   {name: "ACDC Taipei", city: "台北市", district: "信義區", type: "經典", purpose: "聚會", note: "室內版Fake Sober｜熱鬧"},
@@ -186,6 +186,8 @@ const BARS = [
   // ───── 苗栗縣 ─────
   {name: "上癮餐酒館 Obsession Bar", city: "苗栗縣", district: "竹南鎮", type: "特調", purpose: "聚會", style: "黑色貨櫃屋餐酒館", price: 2, address: "苗栗縣竹南鎮公北一路151號", phone: "0901-193-949", hours: "17:00–02:00", lat: 24.691715, lng: 120.890581, note: "竹南運動公園旁醒目的黑色貨櫃屋餐酒館，以浮誇神燈調酒與乾燥花夢幻雞尾酒聞名，週六有駐唱，竹南頭份一帶人氣酒吧。"},
   {name: "紳OWL餐酒館", city: "苗栗縣", district: "頭份市", type: "經典特調", purpose: "聚會", style: "質感餐酒館", price: 2, hours: "營業至02:00", note: "頭份在地人私藏的質感餐酒館，空間寬敞、燈光柔和，Old Fashioned 等經典調酒水準被評為頭份數一數二。"},
+  {name: "入森餐酒館", city: "苗栗縣", district: "苗栗市", type: "特調", purpose: "聚會或一個人", style: "質感餐酒館、客製調酒", price: 2, address: "苗栗縣苗栗市英才路215號", phone: "0955-105-266", hours: "19:00–02:00（排休不定）", lat: 24.577527, lng: 120.819846, note: "苗栗市近年最受討論的質感酒吧，空間與座位氛圍佳，提供客製化調酒。"},
+  {name: "D&F 音樂餐廳", city: "苗栗縣", district: "苗栗市", type: "經典特調", purpose: "聚會", style: "音樂餐廳、運動賽事轉播", price: 1, address: "苗栗縣苗栗市自治路453號", phone: "037-372-921", hours: "20:00–03:00（有賽事轉播時延長）", lat: 24.570842, lng: 120.816521, note: "苗栗車站附近的老牌音樂餐廳，下班放鬆小酌的去處，有大螢幕轉播體育賽事，遇重要賽事會營業到清晨。"},
 
   // ───── 台中市 ─────
   {name: "Vender 販", city: "台中市", district: "西區", type: "特調", purpose: "聚會或一個人", style: "Speakeasy、南洋風", price: 3, address: "台中市西區五權西四街118號", phone: "04-2372-5875", hours: "週日至四 18:00–02:00、週五六至03:00", lat: 24.135566, lng: 120.662498, awards: ["Asia's 50 Best Bars 2026 #14（連三年台灣最佳）","World's 50 Best Bars 2025 #74"], note: "隱身美術館綠園道旁巨型販賣機後的話題酒吧，新加坡籍主理人以創意調酒搭配肉骨茶等星馬料理，台中唯一連年入選亞洲五十大酒吧的名店。"},
@@ -207,10 +209,12 @@ const BARS = [
   {name: "GUTS Cocktail Bar 蓋茲", city: "彰化縣", district: "彰化市", type: "經典特調", purpose: "聚會或一個人", style: "茶酒、專業雞尾酒吧", price: 2, address: "彰化縣彰化市吉祥街3號", phone: "0928-962-999", hours: "週日至四 18:30–01:00、週五六至02:00", lat: 24.078365, lng: 120.537704, note: "彰化市代表性專業調酒吧，以 TWG 茶葉特製茶酒（皇家婚禮、經典1837等）聞名，一個人小酌也自在。"},
   {name: "勝豐吧 Home Bar Lukang", city: "彰化縣", district: "鹿港鎮", type: "啤酒", purpose: "聚會或一個人", style: "百年老屋、精釀啤酒", price: 2, address: "彰化縣鹿港鎮民族路131號", phone: "04-7785232", hours: "18:00–00:00（週四休）", lat: 24.055694, lng: 120.43628, note: "由許家後代與「鹿港囝仔」團隊改造百年老屋而成的精釀啤酒吧，供各國精釀、威士忌並提供老屋導覽，鹿港地方創生代表店家。"},
   {name: "老屋舊時光茶酒所", city: "彰化縣", district: "彰化市", type: "特調", purpose: "聚會", style: "老宅、茶酒、音樂", price: 1, note: "彰化南瑤宮商圈的老宅改建小酒館，結合調酒、茶飲、炸物與音樂，彰化夜貓族的人氣宵夜小酌據點。"},
+  {name: "羅得利餐酒館 Ro-Tary Music Bistro", city: "彰化縣", district: "彰化市", type: "特調", purpose: "聚會", style: "低調奢華、Live Band 駐唱", price: 2, address: "彰化縣彰化市金馬路三段386號", phone: "04-725-9999", hours: "週五六 18:00–02:00；週一三四日 18:00–01:00（週二休）", lat: 24.084052, lng: 120.53075, note: "外觀低調、內部氣氛奢華的餐酒館，週五六有駐唱與 Live Band。招牌萬象水餃與炫炮 Shot，可容納約 45 人，適合朋友聚會。"},
 
   // ───── 南投縣 ─────
   {name: "Michael Bar", city: "南投縣", district: "南投市", type: "經典", purpose: "一個人", style: "老派酒吧、爵士", price: 2, address: "南投縣南投市大同街148號", phone: "049-2238123", hours: "19:00–02:00", lat: 23.909139, lng: 120.687699, note: "自1990年營業至今的南投市老酒吧，木質吧檯、昏黃燈光配爵士樂，延續創始人 Michael 的經典調酒，南投低調老酒吧代表。"},
   {name: "漫。島美式餐酒館 ChillBar", city: "南投縣", district: "埔里鎮", type: "經典特調", purpose: "聚會", style: "美式餐酒館、煙燻烤肉", price: 2, address: "南投縣埔里鎮中山路二段436號", phone: "0988-664-331", hours: "平日 17:00–01:00、週五六 15:00 起（週四休）", lat: 23.970486, lng: 120.975041, note: "埔里少見的美式餐酒館，招牌島主特調與煙燻肉排，英倫雅痞氛圍越夜越熱鬧，埔里夜晚小酌首選之一。"},
+  {name: "家竹 Homebamboo", city: "南投縣", district: "竹山鎮", type: "特調", purpose: "聚會或一個人", style: "竹山在地專業調酒吧", price: 2, address: "南投縣竹山鎮集山路二段1149號", lat: 23.772393, lng: 120.7071, note: "竹山少見的專業調酒吧，在地評價極高，是南投山城一帶深夜放鬆的據點。"},
 
   // ───── 雲林縣 ─────
   {name: "艾澤拉斯小酒館", city: "雲林縣", district: "斗六市", type: "經典特調", purpose: "聚會或一個人", style: "客製調酒、在地食材", price: 2, address: "雲林縣斗六市內環路772號", phone: "0925-006-289", hours: "週日至四 20:00–02:00、週五六至03:00（週二休）", lat: 23.714236, lng: 120.546903, note: "斗六代表性調酒吧，致力將雲林在地食材融入雞尾酒並提供客製專屬調酒，調酒師會細心解說風味層次，新手友善。"},
@@ -221,6 +225,9 @@ const BARS = [
   {name: "COP bar - Cocktails Of Pioneers", city: "嘉義市", district: "西區", type: "特調", purpose: "聚會", style: "現代創意、在地食材調酒", price: 2, address: "嘉義市西區西門街54-1號", hours: "19:30–02:00", lat: 23.471333, lng: 120.44379, note: "以「敬所有先驅者」為題的質感酒吧，用阿里山高山茶、民雄土鳳梨、北港麻油等在地素材調製創意調酒，吧台投影水光效果吸睛。"},
   {name: "斗酒 BAR DOUJIOU", city: "嘉義市", district: "東區", type: "特調", purpose: "聚會", style: "70年老宅懷舊", price: 2, address: "嘉義市東區成仁街82號", hours: "19:30–02:30（週一休）", lat: 23.482866, lng: 120.45113, note: "前身為籐椅傢俱店的70年老屋改建，保留老宅風貌，調酒與餐點兼具、附包廂，嘉義聚會小酌的口碑店。"},
   {name: "CASA bar", city: "嘉義市", district: "東區", type: "特調", purpose: "聚會", style: "科幻未來系、冷調金屬", price: 2, address: "嘉義市東區光彩街132號", hours: "19:00–01:00（週日一休）", lat: 23.479495, lng: 120.461658, note: "嘉義少見的科幻未來風酒吧，冷派金屬空間設計視覺效果強烈，以創意特調聞名。"},
+
+  // ───── 嘉義縣 ─────
+  {name: "打貓廚房 Hit Cat Kitchen", city: "嘉義縣", district: "民雄鄉", type: "啤酒", purpose: "聚會", style: "美式餐酒館、澳洲精釀啤酒", price: 2, address: "嘉義縣民雄鄉建國路二段42號", phone: "05-221-2585", hours: "11:30–23:00（週四至六供餐至22:30，週日至三至20:30）", lat: 23.533243, lng: 120.436853, note: "嘉義縣代表性的美式餐酒館，與自家打貓酒廠合作引進澳洲精釀，並釀有芒果精釀「第19洞」，也供應牛排與異國料理。"},
 
   // ───── 台南市 ─────
   {name: "Bar TCRC 前科累累俱樂部", city: "台南市", district: "中西區", type: "特調", purpose: "聚會或一個人", style: "老屋無酒單創意調酒", price: 2, address: "台南市中西區新美街117號", phone: "06-2228716", hours: "週一至四 20:00–02:00、週五六至03:00（週日休）", lat: 22.998339, lng: 120.201574, awards: ["Asia's 50 Best Bars 多次入選（2021 #23）"], note: "台南酒吧代表、南台灣揚名國際的老宅酒吧，無固定酒單依客人喜好客製，招牌如洛神蜜餞入酒的「府城漫步」。每月1日開放當月線上訂位，一位難求。"},
@@ -251,6 +258,8 @@ const BARS = [
   {name: "30M BAR", city: "屏東縣", district: "恆春鎮", type: "特調", purpose: "聚會或一個人", style: "海洋／潛水主題", price: 2, address: "屏東縣恆春鎮恆南路125巷6號", phone: "08-888-1129", hours: "20:00–02:00（週二休）", lat: 21.99587, lng: 120.743602, note: "恆春最具代表性的酒吧之一，老闆為職業潛水員，酒單緊扣海洋與環境保育主題，招牌有在地青龍糯米椒調製的「小青龍」。"},
   {name: "恆春3000啤酒博物館", city: "屏東縣", district: "恆春鎮", type: "啤酒", purpose: "聚會", style: "精釀啤酒博物館", price: 1, address: "屏東縣恆春鎮草埔路29-1號", hours: "11:00–18:00（週四休）", lat: 22.015884, lng: 120.732402, note: "收藏逾3000只世界各地啤酒杯的啤酒博物館，供應墾丁南灣愛爾、司陶特黑啤等自釀精釀，門票100元可抵飲品，恆春墾丁喝啤酒地標。"},
   {name: "如煙人文餐酒館", city: "屏東縣", district: "屏東市", type: "特調", purpose: "聚會", style: "日式居酒屋餐酒、眷村老屋", price: 2, address: "屏東縣屏東市勝義巷10號（勝利星村內）", phone: "08-7321527", hours: "週日至四 17:00–24:00、週五六至01:00（週一休）", lat: 22.67895, lng: 120.485352, note: "位於勝利星村日式老屋群中，宛如《華燈初上》場景的居酒屋餐酒館，日式定食搭配特色調酒，屏東市區最具話題的微醺去處。"},
+  {name: "LAYBAR", city: "屏東縣", district: "屏東市", type: "特調", purpose: "聚會或一個人", style: "深夜餐酒館", price: 2, address: "屏東縣屏東市華正路55號", phone: "0938-537-662", hours: "20:00–04:00（最後點酒03:00）", lat: 22.685358, lng: 120.498986, note: "屏東市區營業到清晨的餐酒館，是當地少數能喝到很晚的選擇。"},
+  {name: "騎士咬一口 Biker Bite", city: "屏東縣", district: "屏東市", type: "特調", purpose: "聚會", style: "美式重機主題", price: 2, address: "屏東縣屏東市逢甲商場22號", phone: "08-733-6763", hours: "18:00–00:00", note: "屏東市逢甲商場內的美式風格酒吧，重機主題裝潢，調酒與餐點選擇多元。"},
 
   // ───── 宜蘭縣 ─────
   {name: "The Roof 190 星空酒吧", city: "宜蘭縣", district: "羅東鎮", type: "特調", purpose: "聚會", style: "飯店頂樓高空景觀", price: 2, address: "宜蘭縣羅東鎮站東路190號（村却國際溫泉酒店頂樓）", phone: "03-9057988", hours: "約 16:00–24:00", lat: 24.675906, lng: 121.77489, note: "位於羅東最高樓村却國際溫泉酒店頂樓，可360度眺望蘭陽平原夜景，被媒體譽為媲美曼谷高空酒吧，非房客低消300元。"},
@@ -286,4 +295,8 @@ const BARS = [
   {name: "遇見 Meet Bar", city: "金門縣", district: "金寧鄉", type: "特調", purpose: "聚會", style: "高粱特調、聽故事式調酒", address: "金門縣金寧鄉環島北路一段369號1樓", phone: "082-316439", hours: "20:00–04:00（週二休）", lat: 24.44053, lng: 118.321444, note: "以金門高粱特調聞名，招牌「好酒不見」以58度高粱混龍舌蘭，調酒師會依顧客心情量身打造調酒。"},
   {name: "帕堤 Let's party", city: "金門縣", district: "金城鎮", type: "特調", purpose: "聚會", style: "深夜美式酒吧餐廳", address: "金門縣金城鎮西海路三段72巷3弄5號", phone: "082-329147", hours: "20:00–01:00", note: "金門深夜續攤人氣店，高粱特調以檸檬、紅茶淡化辛辣感，搭配高粱嗆蟹、高粱餛飩泡麵等下酒菜。"},
   {name: "談醺室", city: "金門縣", district: "金城鎮", type: "啤酒", purpose: "一個人", style: "金門在地精釀、風獅爺主題", address: "金門縣金城鎮莒光路118號", hours: "17:00–21:00", lat: 24.433305, lng: 118.31639, note: "金門首家精釀啤酒品牌門店，首創高粱啤酒，推出烈火獅、神風獅等風獅爺主題酒款，金門微醺新據點。"},
+
+  // ───── 連江縣 ─────
+  {name: "懿家小酒館 Yi Jia Bistro", city: "連江縣", district: "南竿鄉", type: "特調", purpose: "聚會或一個人", style: "馬祖唯一情調酒吧、自釀金銀花啤酒", price: 2, address: "連江縣南竿鄉馬祖村55號", phone: "0920-415-525", hours: "約 18:00–01:00", lat: 26.159899, lng: 119.916725, note: "馬祖唯一的情調酒吧，也是島上少數的深夜食堂，自製忍冬金銀花精釀啤酒是招牌，秘製烤雞翅最下酒，常需預約。"},
+  {name: "海島波波", city: "連江縣", district: "南竿鄉", type: "特調", purpose: "聚會", style: "餐酒館、附 KTV", price: 1, address: "連江縣南竿鄉", lat: 26.153083, lng: 119.938627, note: "馬祖最 chill 的餐酒館，晚上七點半後免費開放 KTV。招牌「一抹藍眼淚」掀蓋後煙霧瀰漫，另有無酒精的金銀花氣泡飲，餐點與飲品約 50–380 元。"},
 ];

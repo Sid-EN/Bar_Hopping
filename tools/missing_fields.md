@@ -1,6 +1,6 @@
 # 待補欄位檢查表
 
-產生時間：2026/9/1 下午4:46:17
+產生時間：2026/9/1 下午5:04:48
 
 補資料的方式：點店名開 Google 地圖 → 抄下需要的欄位 → 回 `data.js` 找到該行加上去。
 格式範例（欄位順序不拘，沒查到的就不要加）：
@@ -28,21 +28,23 @@
 | 桃園市 | 9 | 8 | 1 | 0 | 0 | 1 |
 | 新竹市 | 6 | 5 | 0 | 0 | 0 | 0 |
 | 新竹縣 | 3 | 3 | 0 | 0 | 0 | 0 |
-| 苗栗縣 | 2 | 2 | 0 | 1 | 0 | 1 |
+| 苗栗縣 | 4 | 4 | 0 | 1 | 0 | 1 |
 | 台中市 | 14 | 14 | 0 | 0 | 0 | 11 |
-| 彰化縣 | 3 | 3 | 0 | 1 | 1 | 1 |
-| 南投縣 | 2 | 2 | 0 | 0 | 0 | 0 |
+| 彰化縣 | 4 | 4 | 0 | 1 | 1 | 1 |
+| 南投縣 | 3 | 3 | 0 | 0 | 1 | 1 |
 | 雲林縣 | 2 | 2 | 0 | 0 | 0 | 0 |
 | 嘉義市 | 4 | 4 | 0 | 0 | 0 | 4 |
+| 嘉義縣 | 1 | 1 | 0 | 0 | 0 | 0 |
 | 台南市 | 11 | 10 | 0 | 0 | 1 | 1 |
 | 高雄市 | 10 | 3 | 0 | 0 | 0 | 1 |
-| 屏東縣 | 3 | 3 | 0 | 0 | 0 | 1 |
+| 屏東縣 | 5 | 5 | 0 | 0 | 0 | 1 |
 | 宜蘭縣 | 6 | 5 | 0 | 0 | 1 | 1 |
 | 花蓮縣 | 5 | 4 | 5 | 0 | 0 | 2 |
 | 台東縣 | 5 | 4 | 5 | 0 | 0 | 3 |
 | 澎湖縣 | 4 | 4 | 1 | 0 | 0 | 1 |
 | 金門縣 | 5 | 5 | 4 | 0 | 0 | 1 |
-| **全台** | **228** | **214** | **140** | **124** | **125** | **154** |
+| 連江縣 | 2 | 2 | 0 | 0 | 1 | 1 |
+| **全台** | **237** | **223** | **140** | **124** | **127** | **156** |
 
 ---
 
@@ -217,10 +219,12 @@
 - [ ] [Bar Neat](https://www.google.com/maps/search/?api=1&query=%E6%96%B0%E7%AB%B9%E7%B8%A3%E7%AB%B9%E5%8C%97%E5%B8%82%E8%8E%8A%E6%95%AC%E4%B8%83%E8%A1%9743%E8%99%9F) · 竹北市 — 缺 **評分**
 - [ ] [橋下2.0 Restaurant & Bar](https://www.google.com/maps/search/?api=1&query=%E6%96%B0%E7%AB%B9%E7%B8%A3%E7%AB%B9%E5%8C%97%E5%B8%82%E5%98%89%E8%B1%90%E5%8C%97%E8%B7%AF62%E8%99%9F) · 竹北市 — 缺 **評分**
 
-### 苗栗縣（2 間待補）
+### 苗栗縣（4 間待補）
 
 - [ ] [上癮餐酒館 Obsession Bar](https://www.google.com/maps/search/?api=1&query=%E8%8B%97%E6%A0%97%E7%B8%A3%E7%AB%B9%E5%8D%97%E9%8E%AE%E5%85%AC%E5%8C%97%E4%B8%80%E8%B7%AF151%E8%99%9F) · 竹南鎮 — 缺 **評分**
 - [ ] [紳OWL餐酒館](https://www.google.com/maps/search/?api=1&query=%E7%B4%B3OWL%E9%A4%90%E9%85%92%E9%A4%A8%20%E8%8B%97%E6%A0%97%E7%B8%A3%E9%A0%AD%E4%BB%BD%E5%B8%82) · 頭份市 — 缺 **評分、地址、電話**
+- [ ] [入森餐酒館](https://www.google.com/maps/search/?api=1&query=%E8%8B%97%E6%A0%97%E7%B8%A3%E8%8B%97%E6%A0%97%E5%B8%82%E8%8B%B1%E6%89%8D%E8%B7%AF215%E8%99%9F) · 苗栗市 — 缺 **評分**
+- [ ] [D&F 音樂餐廳](https://www.google.com/maps/search/?api=1&query=%E8%8B%97%E6%A0%97%E7%B8%A3%E8%8B%97%E6%A0%97%E5%B8%82%E8%87%AA%E6%B2%BB%E8%B7%AF453%E8%99%9F) · 苗栗市 — 缺 **評分**
 
 ### 台中市（14 間待補）
 
@@ -239,16 +243,18 @@
 - [ ] [Matches](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E4%B8%AD%E5%B8%82%E8%A5%BF%E5%8D%80%E6%9D%B1%E8%88%88%E8%B7%AF%E4%B8%89%E6%AE%B5238%E8%99%9F2%E6%A8%93) · 西區 — 缺 **評分、電話**
 - [ ] [Tor Dāy 土地](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E4%B8%AD%E5%B8%82%E8%A5%BF%E5%8D%80%E5%85%AC%E6%AD%A3%E8%B7%AF210%E5%B7%B740%E8%99%9F) · 西區 — 缺 **評分**
 
-### 彰化縣（3 間待補）
+### 彰化縣（4 間待補）
 
 - [ ] [GUTS Cocktail Bar 蓋茲](https://www.google.com/maps/search/?api=1&query=%E5%BD%B0%E5%8C%96%E7%B8%A3%E5%BD%B0%E5%8C%96%E5%B8%82%E5%90%89%E7%A5%A5%E8%A1%973%E8%99%9F) · 彰化市 — 缺 **評分**
 - [ ] [勝豐吧 Home Bar Lukang](https://www.google.com/maps/search/?api=1&query=%E5%BD%B0%E5%8C%96%E7%B8%A3%E9%B9%BF%E6%B8%AF%E9%8E%AE%E6%B0%91%E6%97%8F%E8%B7%AF131%E8%99%9F) · 鹿港鎮 — 缺 **評分**
 - [ ] [老屋舊時光茶酒所](https://www.google.com/maps/search/?api=1&query=%E8%80%81%E5%B1%8B%E8%88%8A%E6%99%82%E5%85%89%E8%8C%B6%E9%85%92%E6%89%80%20%E5%BD%B0%E5%8C%96%E7%B8%A3%E5%BD%B0%E5%8C%96%E5%B8%82) · 彰化市 — 缺 **評分、地址、營業時間、電話**
+- [ ] [羅得利餐酒館 Ro-Tary Music Bistro](https://www.google.com/maps/search/?api=1&query=%E5%BD%B0%E5%8C%96%E7%B8%A3%E5%BD%B0%E5%8C%96%E5%B8%82%E9%87%91%E9%A6%AC%E8%B7%AF%E4%B8%89%E6%AE%B5386%E8%99%9F) · 彰化市 — 缺 **評分**
 
-### 南投縣（2 間待補）
+### 南投縣（3 間待補）
 
 - [ ] [Michael Bar](https://www.google.com/maps/search/?api=1&query=%E5%8D%97%E6%8A%95%E7%B8%A3%E5%8D%97%E6%8A%95%E5%B8%82%E5%A4%A7%E5%90%8C%E8%A1%97148%E8%99%9F) · 南投市 — 缺 **評分**
 - [ ] [漫。島美式餐酒館 ChillBar](https://www.google.com/maps/search/?api=1&query=%E5%8D%97%E6%8A%95%E7%B8%A3%E5%9F%94%E9%87%8C%E9%8E%AE%E4%B8%AD%E5%B1%B1%E8%B7%AF%E4%BA%8C%E6%AE%B5436%E8%99%9F) · 埔里鎮 — 缺 **評分**
+- [ ] [家竹 Homebamboo](https://www.google.com/maps/search/?api=1&query=%E5%8D%97%E6%8A%95%E7%B8%A3%E7%AB%B9%E5%B1%B1%E9%8E%AE%E9%9B%86%E5%B1%B1%E8%B7%AF%E4%BA%8C%E6%AE%B51149%E8%99%9F) · 竹山鎮 — 缺 **評分、營業時間、電話**
 
 ### 雲林縣（2 間待補）
 
@@ -261,6 +267,10 @@
 - [ ] [COP bar - Cocktails Of Pioneers](https://www.google.com/maps/search/?api=1&query=%E5%98%89%E7%BE%A9%E5%B8%82%E8%A5%BF%E5%8D%80%E8%A5%BF%E9%96%80%E8%A1%9754-1%E8%99%9F) · 西區 — 缺 **評分、電話**
 - [ ] [斗酒 BAR DOUJIOU](https://www.google.com/maps/search/?api=1&query=%E5%98%89%E7%BE%A9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%88%90%E4%BB%81%E8%A1%9782%E8%99%9F) · 東區 — 缺 **評分、電話**
 - [ ] [CASA bar](https://www.google.com/maps/search/?api=1&query=%E5%98%89%E7%BE%A9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BD%A9%E8%A1%97132%E8%99%9F) · 東區 — 缺 **評分、電話**
+
+### 嘉義縣（1 間待補）
+
+- [ ] [打貓廚房 Hit Cat Kitchen](https://www.google.com/maps/search/?api=1&query=%E5%98%89%E7%BE%A9%E7%B8%A3%E6%B0%91%E9%9B%84%E9%84%89%E5%BB%BA%E5%9C%8B%E8%B7%AF%E4%BA%8C%E6%AE%B542%E8%99%9F) · 民雄鄉 — 缺 **評分**
 
 ### 台南市（10 間待補）
 
@@ -281,11 +291,13 @@
 - [ ] [Marc L³](https://www.google.com/maps/search/?api=1&query=%E9%AB%98%E9%9B%84%E5%B8%82%E5%89%8D%E9%87%91%E5%8D%80%E4%BB%81%E7%BE%A9%E8%A1%97231%E8%99%9F) · 前金區 — 缺 **評分、電話**
 - [ ] [Marsalis Bar 馬沙里斯爵士酒館](https://www.google.com/maps/search/?api=1&query=%E9%AB%98%E9%9B%84%E5%B8%82%E6%96%B0%E8%88%88%E5%8D%80%E4%B8%AD%E6%AD%A3%E5%9B%9B%E8%B7%AF71%E8%99%9F2%E6%A8%93) · 新興區 — 缺 **評分**
 
-### 屏東縣（3 間待補）
+### 屏東縣（5 間待補）
 
 - [ ] [30M BAR](https://www.google.com/maps/search/?api=1&query=%E5%B1%8F%E6%9D%B1%E7%B8%A3%E6%81%86%E6%98%A5%E9%8E%AE%E6%81%86%E5%8D%97%E8%B7%AF125%E5%B7%B76%E8%99%9F) · 恆春鎮 — 缺 **評分**
 - [ ] [恆春3000啤酒博物館](https://www.google.com/maps/search/?api=1&query=%E5%B1%8F%E6%9D%B1%E7%B8%A3%E6%81%86%E6%98%A5%E9%8E%AE%E8%8D%89%E5%9F%94%E8%B7%AF29-1%E8%99%9F) · 恆春鎮 — 缺 **評分、電話**
 - [ ] [如煙人文餐酒館](https://www.google.com/maps/search/?api=1&query=%E5%B1%8F%E6%9D%B1%E7%B8%A3%E5%B1%8F%E6%9D%B1%E5%B8%82%E5%8B%9D%E7%BE%A9%E5%B7%B710%E8%99%9F%EF%BC%88%E5%8B%9D%E5%88%A9%E6%98%9F%E6%9D%91%E5%85%A7%EF%BC%89) · 屏東市 — 缺 **評分**
+- [ ] [LAYBAR](https://www.google.com/maps/search/?api=1&query=%E5%B1%8F%E6%9D%B1%E7%B8%A3%E5%B1%8F%E6%9D%B1%E5%B8%82%E8%8F%AF%E6%AD%A3%E8%B7%AF55%E8%99%9F) · 屏東市 — 缺 **評分**
+- [ ] [騎士咬一口 Biker Bite](https://www.google.com/maps/search/?api=1&query=%E5%B1%8F%E6%9D%B1%E7%B8%A3%E5%B1%8F%E6%9D%B1%E5%B8%82%E9%80%A2%E7%94%B2%E5%95%86%E5%A0%B422%E8%99%9F) · 屏東市 — 缺 **評分**
 
 ### 宜蘭縣（5 間待補）
 
@@ -325,3 +337,8 @@
 - [ ] [遇見 Meet Bar](https://www.google.com/maps/search/?api=1&query=%E9%87%91%E9%96%80%E7%B8%A3%E9%87%91%E5%AF%A7%E9%84%89%E7%92%B0%E5%B3%B6%E5%8C%97%E8%B7%AF%E4%B8%80%E6%AE%B5369%E8%99%9F1%E6%A8%93) · 金寧鄉 — 缺 **評分、價位**
 - [ ] [帕堤 Let's party](https://www.google.com/maps/search/?api=1&query=%E9%87%91%E9%96%80%E7%B8%A3%E9%87%91%E5%9F%8E%E9%8E%AE%E8%A5%BF%E6%B5%B7%E8%B7%AF%E4%B8%89%E6%AE%B572%E5%B7%B73%E5%BC%845%E8%99%9F) · 金城鎮 — 缺 **評分、價位**
 - [ ] [談醺室](https://www.google.com/maps/search/?api=1&query=%E9%87%91%E9%96%80%E7%B8%A3%E9%87%91%E5%9F%8E%E9%8E%AE%E8%8E%92%E5%85%89%E8%B7%AF118%E8%99%9F) · 金城鎮 — 缺 **評分、價位、電話**
+
+### 連江縣（2 間待補）
+
+- [ ] [懿家小酒館 Yi Jia Bistro](https://www.google.com/maps/search/?api=1&query=%E9%80%A3%E6%B1%9F%E7%B8%A3%E5%8D%97%E7%AB%BF%E9%84%89%E9%A6%AC%E7%A5%96%E6%9D%9155%E8%99%9F) · 南竿鄉 — 缺 **評分**
+- [ ] [海島波波](https://www.google.com/maps/search/?api=1&query=%E9%80%A3%E6%B1%9F%E7%B8%A3%E5%8D%97%E7%AB%BF%E9%84%89) · 南竿鄉 — 缺 **評分、營業時間、電話**
