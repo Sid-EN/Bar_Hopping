@@ -725,20 +725,21 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     T.closeForm(true);
 
     // 改名時，收藏／打卡／路線的 key 要跟著搬
+    const before = T.BARS.length;
     const b0 = T.BARS[0], oldKey = T.barKey(b0);
     T.handleAction('want', oldKey);
     T.handleAction('visited', oldKey);
     T.handleAction('route', oldKey);
     T.applyLocalChange({ ...b0, name: b0.name + ' 改名版' }, oldKey);
     const newKey = b0.city ? `${b0.name} 改名版|${b0.city}` : null;
-    t('改名後總數不變', T.BARS.length === 222, T.BARS.length);
+    t('改名後總數不變', T.BARS.length === before, T.BARS.length + ' vs ' + before);
     t('收藏跟著搬到新名字', !!T.store.want[newKey] && !T.store.want[oldKey]);
     t('打卡紀錄跟著搬', !!T.store.visited[newKey]);
     t('路線也跟著更新', T.store.route.includes(newKey) && !T.store.route.includes(oldKey));
 
     // 刪除
     T.removeLocal(newKey);
-    t('刪除後總數 -1', T.BARS.length === 221, T.BARS.length);
+    t('刪除後總數 -1', T.BARS.length === before - 1, T.BARS.length + ' vs ' + (before - 1));
     t('刪除後收藏一併清掉', !T.store.want[newKey]);
     t('刪除後不在路線裡', !T.store.route.includes(newKey));
 }

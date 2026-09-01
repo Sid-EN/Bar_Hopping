@@ -1,6 +1,6 @@
 # 待補欄位檢查表
 
-產生時間：2026/9/1 上午10:53:05
+產生時間：2026/9/1 下午4:46:17
 
 補資料的方式：點店名開 Google 地圖 → 抄下需要的欄位 → 回 `data.js` 找到該行加上去。
 格式範例（欄位順序不拘，沒查到的就不要加）：
@@ -22,14 +22,14 @@
 
 | 縣市 | 總數 | 缺評分 | 缺價位 | 缺地址 | 缺時間 | 缺電話 |
 |---|---|---|---|---|---|---|
-| 台北市 | 119 | 119 | 116 | 116 | 116 | 118 |
-| 新北市 | 6 | 6 | 6 | 6 | 6 | 6 |
+| 台北市 | 121 | 120 | 116 | 116 | 116 | 118 |
+| 新北市 | 8 | 8 | 6 | 6 | 6 | 6 |
 | 基隆市 | 5 | 5 | 2 | 0 | 0 | 1 |
 | 桃園市 | 9 | 8 | 1 | 0 | 0 | 1 |
 | 新竹市 | 6 | 5 | 0 | 0 | 0 | 0 |
 | 新竹縣 | 3 | 3 | 0 | 0 | 0 | 0 |
 | 苗栗縣 | 2 | 2 | 0 | 1 | 0 | 1 |
-| 台中市 | 13 | 13 | 0 | 0 | 0 | 11 |
+| 台中市 | 14 | 14 | 0 | 0 | 0 | 11 |
 | 彰化縣 | 3 | 3 | 0 | 1 | 1 | 1 |
 | 南投縣 | 2 | 2 | 0 | 0 | 0 | 0 |
 | 雲林縣 | 2 | 2 | 0 | 0 | 0 | 0 |
@@ -37,12 +37,12 @@
 | 台南市 | 11 | 10 | 0 | 0 | 1 | 1 |
 | 高雄市 | 10 | 3 | 0 | 0 | 0 | 1 |
 | 屏東縣 | 3 | 3 | 0 | 0 | 0 | 1 |
-| 宜蘭縣 | 5 | 5 | 0 | 0 | 1 | 1 |
+| 宜蘭縣 | 6 | 5 | 0 | 0 | 1 | 1 |
 | 花蓮縣 | 5 | 4 | 5 | 0 | 0 | 2 |
 | 台東縣 | 5 | 4 | 5 | 0 | 0 | 3 |
 | 澎湖縣 | 4 | 4 | 1 | 0 | 0 | 1 |
 | 金門縣 | 5 | 5 | 4 | 0 | 0 | 1 |
-| **全台** | **222** | **210** | **140** | **124** | **125** | **154** |
+| **全台** | **228** | **214** | **140** | **124** | **125** | **154** |
 
 ---
 
@@ -50,7 +50,7 @@
 
 只列出有缺欄位的店家。已經齊全的不會出現在這裡。
 
-### 台北市（119 間待補）
+### 台北市（120 間待補）
 
 - [ ] [隧道](https://www.google.com/maps/search/?api=1&query=%E9%9A%A7%E9%81%93%20%E5%8F%B0%E5%8C%97%E5%B8%82%E5%85%A7%E6%B9%96%E5%8D%80) · 內湖區 — 缺 **評分、價位、地址、營業時間、電話**
 - [ ] [小後苑 大直](https://www.google.com/maps/search/?api=1&query=%E5%B0%8F%E5%BE%8C%E8%8B%91%20%E5%A4%A7%E7%9B%B4%20%E5%8F%B0%E5%8C%97%E5%B8%82%E4%B8%AD%E5%B1%B1%E5%8D%80) · 中山區 — 缺 **評分、價位、地址、營業時間、電話**
@@ -171,8 +171,9 @@
 - [ ] [無 Wu (Nothingness)](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E5%8C%97%E5%B8%82%E4%BF%A1%E7%BE%A9%E5%8D%80%E5%85%89%E5%BE%A9%E5%8D%97%E8%B7%AF419-1%E8%99%9F1%E6%A8%93) · 信義區 — 缺 **評分、電話**
 - [ ] [AHA Saloon](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E5%8C%97%E5%B8%82%E5%A4%A7%E5%AE%89%E5%8D%80%E5%BE%A9%E8%88%88%E5%8D%97%E8%B7%AF%E4%BA%8C%E6%AE%B5138%E8%99%9F) · 大安區 — 缺 **評分**
 - [ ] [MAD:MEN 面麵酒屋](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E5%8C%97%E5%B8%82%E5%A4%A7%E5%AE%89%E5%8D%80%E5%92%8C%E5%B9%B3%E6%9D%B1%E8%B7%AF%E4%B8%89%E6%AE%B568%E8%99%9F1%E6%A8%93) · 大安區 — 缺 **評分、電話**
+- [ ] [FUGU Japanese Gastropub](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E5%8C%97%E5%B8%82%E4%BF%A1%E7%BE%A9%E5%8D%80%E5%98%89%E8%88%88%E8%A1%9730%E8%99%9F) · 信義區 — 缺 **評分**
 
-### 新北市（6 間待補）
+### 新北市（8 間待補）
 
 - [ ] [多崎作 — The Ferrymen](https://www.google.com/maps/search/?api=1&query=%E5%A4%9A%E5%B4%8E%E4%BD%9C%20%E2%80%94%20The%20Ferrymen%20%E6%96%B0%E5%8C%97%E5%B8%82%E6%B7%A1%E6%B0%B4%E5%8D%80) · 淡水區 — 缺 **評分、價位、地址、營業時間、電話**
 - [ ] [瀑布隔壁Bar](https://www.google.com/maps/search/?api=1&query=%E7%80%91%E5%B8%83%E9%9A%94%E5%A3%81Bar%20%E6%96%B0%E5%8C%97%E5%B8%82%E7%91%9E%E8%8A%B3%E5%8D%80) · 瑞芳區 — 缺 **評分、價位、地址、營業時間、電話**
@@ -180,6 +181,8 @@
 - [ ] [CAJU](https://www.google.com/maps/search/?api=1&query=CAJU%20%E6%96%B0%E5%8C%97%E5%B8%82%E6%9D%BF%E6%A9%8B%E5%8D%80) · 板橋區 — 缺 **評分、價位、地址、營業時間、電話**
 - [ ] [Bar Aku](https://www.google.com/maps/search/?api=1&query=Bar%20Aku%20%E6%96%B0%E5%8C%97%E5%B8%82%E6%9D%BF%E6%A9%8B%E5%8D%80) · 板橋區 — 缺 **評分、價位、地址、營業時間、電話**
 - [ ] [Bar Ripple](https://www.google.com/maps/search/?api=1&query=Bar%20Ripple%20%E6%96%B0%E5%8C%97%E5%B8%82%E6%B0%B8%E5%92%8C%E5%8D%80) · 永和區 — 缺 **評分、價位、地址、營業時間、電話**
+- [ ] [暖流](https://www.google.com/maps/search/?api=1&query=%E6%96%B0%E5%8C%97%E5%B8%82%E6%9D%BF%E6%A9%8B%E5%8D%80%E8%A7%80%E5%85%89%E8%A1%9756-1%E8%99%9F) · 板橋區 — 缺 **評分**
+- [ ] [Asia 49 亞洲料理及酒廊](https://www.google.com/maps/search/?api=1&query=%E6%96%B0%E5%8C%97%E5%B8%82%E6%9D%BF%E6%A9%8B%E5%8D%80%E6%96%B0%E7%AB%99%E8%B7%AF16%E8%99%9F49%E6%A8%93) · 板橋區 — 缺 **評分**
 
 ### 基隆市（5 間待補）
 
@@ -219,7 +222,7 @@
 - [ ] [上癮餐酒館 Obsession Bar](https://www.google.com/maps/search/?api=1&query=%E8%8B%97%E6%A0%97%E7%B8%A3%E7%AB%B9%E5%8D%97%E9%8E%AE%E5%85%AC%E5%8C%97%E4%B8%80%E8%B7%AF151%E8%99%9F) · 竹南鎮 — 缺 **評分**
 - [ ] [紳OWL餐酒館](https://www.google.com/maps/search/?api=1&query=%E7%B4%B3OWL%E9%A4%90%E9%85%92%E9%A4%A8%20%E8%8B%97%E6%A0%97%E7%B8%A3%E9%A0%AD%E4%BB%BD%E5%B8%82) · 頭份市 — 缺 **評分、地址、電話**
 
-### 台中市（13 間待補）
+### 台中市（14 間待補）
 
 - [ ] [Vender 販](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E4%B8%AD%E5%B8%82%E8%A5%BF%E5%8D%80%E4%BA%94%E6%AC%8A%E8%A5%BF%E5%9B%9B%E8%A1%97118%E8%99%9F) · 西區 — 缺 **評分**
 - [ ] [栖 Habitatto](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E4%B8%AD%E5%B8%82%E8%A5%BF%E5%8D%80%E6%B0%91%E6%AC%8A%E8%B7%AF217%E5%B7%B722%E8%99%9F) · 西區 — 缺 **評分、電話**
@@ -234,6 +237,7 @@
 - [ ] [舟舟 Bar Boat](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E4%B8%AD%E5%B8%82%E8%A5%BF%E5%8D%80%E7%B2%BE%E8%AA%A0%E4%B8%80%E8%A1%974%E8%99%9F) · 西區 — 缺 **評分、電話**
 - [ ] [青AO](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E4%B8%AD%E5%B8%82%E8%A5%BF%E5%8D%80%E7%BE%8E%E6%9D%91%E8%B7%AF%E4%B8%80%E6%AE%B5335%E8%99%9F) · 西區 — 缺 **評分、電話**
 - [ ] [Matches](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E4%B8%AD%E5%B8%82%E8%A5%BF%E5%8D%80%E6%9D%B1%E8%88%88%E8%B7%AF%E4%B8%89%E6%AE%B5238%E8%99%9F2%E6%A8%93) · 西區 — 缺 **評分、電話**
+- [ ] [Tor Dāy 土地](https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E4%B8%AD%E5%B8%82%E8%A5%BF%E5%8D%80%E5%85%AC%E6%AD%A3%E8%B7%AF210%E5%B7%B740%E8%99%9F) · 西區 — 缺 **評分**
 
 ### 彰化縣（3 間待補）
 

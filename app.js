@@ -235,6 +235,35 @@ const modalContent = document.getElementById('modalContent');
 const $ = id => document.getElementById(id);
 
 const CITY_ORDER = REGIONS.reduce((a, r) => a.concat(r.cities), []);
+
+// 全台行政區對照（依內政部行政區劃）。用途有二：
+//   1. 篩選的行政區下拉會列出該縣市所有行政區，不再只列出「已經有酒吧」的那幾個
+//   2. 新增酒吧時提供建議清單，避免打錯字
+const DISTRICTS = {
+    '台北市': ['中正區', '大同區', '中山區', '松山區', '大安區', '萬華區', '信義區', '士林區', '北投區', '內湖區', '南港區', '文山區'],
+    '新北市': ['板橋區', '三重區', '中和區', '永和區', '新莊區', '新店區', '樹林區', '鶯歌區', '三峽區', '淡水區', '汐止區', '瑞芳區', '土城區', '蘆洲區', '五股區', '泰山區', '林口區', '深坑區', '石碇區', '坪林區', '三芝區', '石門區', '八里區', '平溪區', '雙溪區', '貢寮區', '金山區', '萬里區', '烏來區'],
+    '基隆市': ['仁愛區', '信義區', '中正區', '中山區', '安樂區', '暖暖區', '七堵區'],
+    '桃園市': ['桃園區', '中壢區', '平鎮區', '八德區', '楊梅區', '蘆竹區', '大溪區', '龍潭區', '龜山區', '大園區', '觀音區', '新屋區', '復興區'],
+    '新竹市': ['東區', '北區', '香山區'],
+    '新竹縣': ['竹北市', '竹東鎮', '新埔鎮', '關西鎮', '湖口鄉', '新豐鄉', '芎林鄉', '橫山鄉', '北埔鄉', '寶山鄉', '峨眉鄉', '尖石鄉', '五峰鄉'],
+    '苗栗縣': ['苗栗市', '頭份市', '竹南鎮', '後龍鎮', '通霄鎮', '苑裡鎮', '卓蘭鎮', '造橋鄉', '西湖鄉', '頭屋鄉', '公館鄉', '銅鑼鄉', '三義鄉', '大湖鄉', '獅潭鄉', '三灣鄉', '南庄鄉', '泰安鄉'],
+    '台中市': ['中區', '東區', '南區', '西區', '北區', '北屯區', '西屯區', '南屯區', '太平區', '大里區', '霧峰區', '烏日區', '豐原區', '后里區', '石岡區', '東勢區', '和平區', '新社區', '潭子區', '大雅區', '神岡區', '大肚區', '沙鹿區', '龍井區', '梧棲區', '清水區', '大甲區', '外埔區', '大安區'],
+    '彰化縣': ['彰化市', '員林市', '和美鎮', '鹿港鎮', '溪湖鎮', '二林鎮', '田中鎮', '北斗鎮', '花壇鄉', '芬園鄉', '大村鄉', '永靖鄉', '伸港鄉', '線西鄉', '福興鄉', '秀水鄉', '埔心鄉', '埔鹽鄉', '大城鄉', '芳苑鄉', '竹塘鄉', '社頭鄉', '二水鄉', '田尾鄉', '埤頭鄉', '溪州鄉'],
+    '南投縣': ['南投市', '埔里鎮', '草屯鎮', '竹山鎮', '集集鎮', '名間鄉', '鹿谷鄉', '中寮鄉', '魚池鄉', '國姓鄉', '水里鄉', '信義鄉', '仁愛鄉'],
+    '雲林縣': ['斗六市', '斗南鎮', '虎尾鎮', '西螺鎮', '土庫鎮', '北港鎮', '莿桐鄉', '林內鄉', '古坑鄉', '大埤鄉', '崙背鄉', '二崙鄉', '麥寮鄉', '台西鄉', '東勢鄉', '褒忠鄉', '四湖鄉', '口湖鄉', '水林鄉', '元長鄉'],
+    '嘉義市': ['東區', '西區'],
+    '嘉義縣': ['太保市', '朴子市', '布袋鎮', '大林鎮', '民雄鄉', '溪口鄉', '新港鄉', '六腳鄉', '東石鄉', '義竹鄉', '鹿草鄉', '水上鄉', '中埔鄉', '竹崎鄉', '梅山鄉', '番路鄉', '大埔鄉', '阿里山鄉'],
+    '台南市': ['中西區', '東區', '南區', '北區', '安平區', '安南區', '永康區', '歸仁區', '新化區', '左鎮區', '玉井區', '楠西區', '南化區', '仁德區', '關廟區', '龍崎區', '官田區', '麻豆區', '佳里區', '西港區', '七股區', '將軍區', '學甲區', '北門區', '新營區', '後壁區', '白河區', '東山區', '六甲區', '下營區', '柳營區', '鹽水區', '善化區', '大內區', '山上區', '新市區', '安定區'],
+    '高雄市': ['楠梓區', '左營區', '鼓山區', '三民區', '鹽埕區', '前金區', '新興區', '苓雅區', '前鎮區', '旗津區', '小港區', '鳳山區', '大寮區', '鳥松區', '林園區', '仁武區', '大樹區', '大社區', '岡山區', '路竹區', '橋頭區', '梓官區', '彌陀區', '永安區', '燕巢區', '田寮區', '阿蓮區', '茄萣區', '湖內區', '旗山區', '美濃區', '內門區', '杉林區', '甲仙區', '六龜區', '茂林區', '桃源區', '那瑪夏區'],
+    '屏東縣': ['屏東市', '潮州鎮', '東港鎮', '恆春鎮', '萬丹鄉', '長治鄉', '麟洛鄉', '九如鄉', '里港鄉', '鹽埔鄉', '高樹鄉', '萬巒鄉', '內埔鄉', '竹田鄉', '新埤鄉', '枋寮鄉', '新園鄉', '崁頂鄉', '林邊鄉', '南州鄉', '佳冬鄉', '琉球鄉', '車城鄉', '滿州鄉', '枋山鄉', '三地門鄉', '霧台鄉', '瑪家鄉', '泰武鄉', '來義鄉', '春日鄉', '獅子鄉', '牡丹鄉'],
+    '宜蘭縣': ['宜蘭市', '羅東鎮', '蘇澳鎮', '頭城鎮', '礁溪鄉', '壯圍鄉', '員山鄉', '冬山鄉', '五結鄉', '三星鄉', '大同鄉', '南澳鄉'],
+    '花蓮縣': ['花蓮市', '鳳林鎮', '玉里鎮', '新城鄉', '吉安鄉', '壽豐鄉', '光復鄉', '豐濱鄉', '瑞穗鄉', '富里鄉', '秀林鄉', '萬榮鄉', '卓溪鄉'],
+    '台東縣': ['台東市', '成功鎮', '關山鎮', '卑南鄉', '鹿野鄉', '池上鄉', '東河鄉', '長濱鄉', '太麻里鄉', '大武鄉', '綠島鄉', '海端鄉', '延平鄉', '金峰鄉', '達仁鄉', '蘭嶼鄉'],
+    '澎湖縣': ['馬公市', '湖西鄉', '白沙鄉', '西嶼鄉', '望安鄉', '七美鄉'],
+    '金門縣': ['金城鎮', '金湖鎮', '金沙鎮', '金寧鄉', '烈嶼鄉', '烏坵鄉'],
+    '連江縣': ['南竿鄉', '北竿鄉', '莒光鄉', '東引鄉']
+};
+
 const byKey = {};
 
 // 依縣市重新分組並重建索引。寫回 repo 成功後會呼叫，讓畫面立刻反映變更，
@@ -319,9 +348,20 @@ function selectCity(city) {
 
 function updateDistrictOptions() {
     const pool = currentCity === 'all' ? BARS : BARS.filter(b => b.city === currentCity);
-    const districts = [...new Set(pool.map(b => b.district).filter(Boolean))];
+    const count = {};
+    for (const b of pool) if (b.district) count[b.district] = (count[b.district] || 0) + 1;
+
+    // 選了單一縣市時列出該縣市「所有」行政區，沒有酒吧的也列出來（標示 0），
+    // 這樣才看得出哪一區還沒收錄。選「全部酒吧」時只列有資料的，不然清單會爆長。
+    const districts = currentCity === 'all'
+        ? Object.keys(count)
+        : (DISTRICTS[currentCity] || Object.keys(count));
+
     districtSelect.innerHTML = '<option value="all">所有行政區</option>' +
-        districts.map(d => `<option value="${d}">${d}</option>`).join('');
+        districts.map(d => {
+            const n = count[d] || 0;
+            return `<option value="${d}"${n ? '' : ' disabled'}>${d}（${n}）</option>`;
+        }).join('');
 }
 
 // ===== 多選標籤 =====
@@ -875,6 +915,7 @@ function openForm(bar) {
         if (currentCity !== 'all') setVal('city', currentCity);   // 從縣市頁籤按新增就預選該縣市
     }
 
+    updateDistrictDatalist();
     refreshForm();
     renderPreview();
     fillGhForm();
@@ -885,6 +926,15 @@ function openForm(bar) {
 }
 
 // force = true 代表儲存或刪除完成，不需要再問
+// 依表單裡選的縣市，提供該縣市的行政區建議，避免打錯字
+function updateDistrictDatalist() {
+    const dl = $('districtList');
+    if (!dl) return;
+    const city = $('barForm').elements.city.value;
+    const list = DISTRICTS[city] || [];
+    dl.innerHTML = list.map(d => `<option value="${d}"></option>`).join('');
+}
+
 function closeForm(force) {
     if (!force && formDirty() && !confirm('表單還有沒儲存的內容，確定要關閉嗎？')) return false;
     $('formOverlay').hidden = true;
@@ -1107,6 +1157,29 @@ async function pushToRepo() {
         toast('請先在下方的 GitHub 設定填入存取權杖');
         $('ghToken').focus();
         return;
+    }
+
+    // 編輯時若某些原本有值的欄位變成空的，先問過再寫。
+    // 曾發生編輯後 special 靜靜消失的情況，這道確認可以擋下各種原因造成的欄位流失。
+    if (editingKey) {
+        const before = byKey[editingKey];
+        if (before) {
+            const FIELD_NAMES = {
+                district: '行政區', type: '酒類', purpose: '適合場合', style: '風格',
+                price: '價位', budget: '人均金額', address: '地址', phone: '電話',
+                hours: '營業時間', lat: '緯度', lng: '經度', rating: '評分',
+                ratingCount: '評論數', awards: '獲獎紀錄', special: '⭐ 私心推薦', note: '介紹'
+            };
+            const dropped = Object.keys(FIELD_NAMES)
+                .filter(k => before[k] !== undefined && bar[k] === undefined)
+                .map(k => FIELD_NAMES[k]);
+            if (dropped.length && !confirm(
+                `這次儲存會清掉「${before.name}」原本有的欄位：\n\n・${dropped.join('\n・')}\n\n` +
+                `如果不是故意要刪，請按取消，把資料補回去再存。\n確定要繼續嗎？`)) {
+                toast('已取消，沒有寫入任何東西');
+                return;
+            }
+        }
     }
 
     const btn = $('formPush');
@@ -2109,7 +2182,10 @@ $('formClose').addEventListener('click', () => closeForm());
 // 要關請按右上角 × 或 Esc，有未儲存內容時還會再確認一次。
 $('barForm').addEventListener('submit', e => { e.preventDefault(); pushToRepo(); });
 $('barForm').addEventListener('input', refreshForm);
-$('barForm').addEventListener('change', refreshForm);
+$('barForm').addEventListener('change', e => {
+    if (e.target && e.target.name === 'city') updateDistrictDatalist();
+    refreshForm();
+});
 $('formCopy').addEventListener('click', copyDataJs);
 $('formPush').addEventListener('click', e => { e.preventDefault(); pushToRepo(); });
 $('ghSave').addEventListener('click', () => {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>台灣微醺指南 | TAIWAN BAR BIBLE</title>
-    <meta name="description" content="全台 222 間知名酒吧查找指南，涵蓋 20 縣市。可依縣市、價位、營業時間篩選，支援地圖模式與跑吧路線規劃。">
+    <meta name="description" content="全台 228 間知名酒吧查找指南，涵蓋 20 縣市。可依縣市、價位、營業時間篩選，支援地圖模式與跑吧路線規劃。">
     <meta name="theme-color" content="#d4af37">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -566,7 +566,8 @@
                     <select name="city" required></select>
                 </label>
                 <label>行政區
-                    <input type="text" name="district" placeholder="例：大安區" autocomplete="off">
+                    <input type="text" name="district" placeholder="例：大安區" autocomplete="off" list="districtList">
+                    <datalist id="districtList"></datalist>
                 </label>
                 <label>酒類
                     <select name="type">
