@@ -16,7 +16,7 @@
         :root { --gold: #d4af37; --dark: #121212; --card: #1e1e1e; --text: #e0e0e0; --muted: #888; --line: #333;
                 --open: #5ac77f; --closed: #d96a6a; --want: #ff6b8a; --visited: #5ac77f; }
         * { box-sizing: border-box; }
-        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: var(--dark); color: var(--text); margin: 0; padding: 20px 20px 90px; line-height: 1.6; }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: var(--dark); color: var(--text); margin: 0; padding: 20px 20px 160px; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; }
         header { text-align: center; padding: 36px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
         h1 { color: var(--gold); letter-spacing: 3px; margin: 0; font-size: 2rem; }
@@ -73,6 +73,92 @@
         /* 圖釘聚合（配合深色主題重新上色）*/
         .marker-cluster { background: rgba(212,175,55,0.25); border-radius: 50%; }
         .marker-cluster div { background: rgba(212,175,55,0.85); color: #000; font-weight: bold; width: 30px; height: 30px; margin: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'PingFang TC', sans-serif; font-size: 0.8rem; }
+
+        /* 淺色主題：只換色票，版面完全沿用 */
+        html[data-theme="light"] {
+            --gold: #9a7b16; --dark: #f7f4ec; --card: #ffffff; --text: #2b2b2b;
+            --muted: #6b6b6b; --line: #ddd6c4;
+            --open: #2e8b52; --closed: #c04a4a; --want: #d4436a; --visited: #2e8b52;
+        }
+        html[data-theme="light"] body { background: var(--dark); }
+        html[data-theme="light"] select,
+        html[data-theme="light"] input[type=text],
+        html[data-theme="light"] input[type=time],
+        html[data-theme="light"] textarea { background: #fff; border-color: #cfc7b2; color: #2b2b2b; }
+        html[data-theme="light"] .bar-card { border-color: #e6dfcd; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        html[data-theme="light"] .bar-card:hover { box-shadow: 0 10px 20px rgba(0,0,0,0.12); }
+        html[data-theme="light"] .tag { background: #efeadb; color: #4a4a4a; }
+        html[data-theme="light"] .tag-highlight { background: #fdf0c4; color: #7a5c00; }
+        html[data-theme="light"] .tag-friend { background: #fde3d6; color: #a04a20; }
+        html[data-theme="light"] .tag-award { background: #ece0fb; color: #5b3392; }
+        html[data-theme="light"] .award-badge { background: #ece0fb; color: #5b3392; border-color: #b79ae0; }
+        html[data-theme="light"] .status-badge { background: #fbe0e0; color: #9c2b2b; border-color: #d99; }
+        html[data-theme="light"] .special-badge { color: #fff; }
+        html[data-theme="light"] .bar-note { color: #555; }
+        html[data-theme="light"] .modal-note { background: #f4f0e4; color: #444; }
+        html[data-theme="light"] .list-tab, html[data-theme="light"] .chip,
+        html[data-theme="light"] .city-tab { background: #fff; }
+        html[data-theme="light"] .chip.on, html[data-theme="light"] .city-tab.active,
+        html[data-theme="light"] .list-tab.active { color: #fff; }
+        html[data-theme="light"] .route-bar { background: rgba(255,255,255,0.97); }
+        html[data-theme="light"] .route-chip, html[data-theme="light"] .visit-chip { background: #f2eee1; }
+        html[data-theme="light"] .stars { color: #cfc7b2; }
+        html[data-theme="light"] .modal-overlay { background: rgba(0,0,0,0.45); }
+        html[data-theme="light"] .toast { color: #fff; }
+        html[data-theme="light"] .budget { color: #2e7d4f; }
+        html[data-theme="light"] .recap-card { background: #fff; }
+        html[data-theme="light"] .marker-cluster div { color: #fff; }
+
+        /* 距離、筆記、到訪紀錄 */
+        .dist { color: #7fb3d5; }
+        .my-visit { color: #9fd4a3; }
+        .my-note { color: #c9b6e0; font-style: italic; }
+        .visit-box { background: #262626; border-radius: 10px; padding: 14px 16px; margin: 16px 0; }
+        .visit-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--gold); font-size: 0.85rem; font-weight: bold; }
+        .visit-since { color: var(--muted); font-weight: normal; flex: 1; }
+        .visit-dates { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+        .visit-chip { background: #333; color: #bbb; font-size: 0.72rem; padding: 2px 9px; border-radius: 12px; }
+        .visit-note-label { display: block; color: var(--gold); font-size: 0.82rem; margin: 12px 0 6px; font-weight: bold; }
+        .visit-note { width: 100%; background: #1e1e1e; border: 1px solid #444; color: var(--text); border-radius: 8px; padding: 10px; font-family: inherit; font-size: 0.88rem; resize: vertical; }
+        .visit-note:focus { border-color: var(--gold); outline: none; }
+        .visit-note-hint { color: #666; font-size: 0.72rem; margin-top: 4px; }
+        html[data-theme="light"] .visit-box { background: #f4f0e4; }
+        html[data-theme="light"] .visit-note { background: #fff; }
+
+        /* 路線時間表 */
+        .route-schedule { max-width: 1200px; margin: 0 auto 10px; }
+        .route-schedule:empty { display: none; }
+        .sched-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.82rem; color: var(--gold); margin-bottom: 8px; }
+        .sched-head input[type=time] { background: #2c2c2c; border: 1px solid #444; color: var(--text); border-radius: 6px; padding: 4px 8px; font-family: inherit; }
+        .sched-note { color: var(--muted); font-weight: normal; }
+        .sched-list { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+        .sched-item { display: inline-flex; align-items: center; gap: 8px; background: #2c2c2c; border-left: 3px solid var(--muted); border-radius: 0 8px 8px 0; padding: 5px 12px; font-size: 0.8rem; }
+        .sched-item.ok { border-left-color: var(--open); }
+        .sched-item.warn { border-left-color: var(--gold); }
+        .sched-item.bad { border-left-color: var(--closed); }
+        .sched-item.unk { border-left-color: #666; }
+        .sched-time { color: var(--gold); font-weight: bold; font-variant-numeric: tabular-nums; }
+        .sched-name { color: var(--text); }
+        .sched-state { color: var(--muted); font-size: 0.75rem; }
+        .sched-item.bad .sched-state { color: var(--closed); }
+        .sched-item.warn .sched-state { color: var(--gold); }
+        .sched-alert { color: var(--closed); font-size: 0.8rem; margin-top: 8px; }
+        .sched-ok { color: var(--open); font-size: 0.8rem; margin-top: 8px; }
+        html[data-theme="light"] .sched-item { background: #f2eee1; }
+        html[data-theme="light"] .sched-head input[type=time] { background: #fff; border-color: #cfc7b2; }
+
+        /* 年度回顧 */
+        .recap-head { display: flex; align-items: center; gap: 10px; margin: 16px 0; font-size: 0.85rem; color: var(--muted); }
+        .recap-head select { width: auto; }
+        .recap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 16px 0; }
+        .recap-card { background: #262626; border-radius: 12px; padding: 16px 10px; text-align: center; }
+        .recap-ico { font-size: 1.5rem; }
+        .recap-num { color: var(--gold); font-size: 1.8rem; font-weight: bold; line-height: 1.2; }
+        .recap-lab { color: var(--muted); font-size: 0.75rem; }
+        .recap-progress { color: var(--muted); font-size: 0.82rem; text-align: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+        html[data-theme="light"] .recap-card { background: #f4f0e4; }
+
+        .btn.on { background: var(--gold); color: #000; }
 
         /* 縣市分區頁籤 */
         .city-nav { margin-bottom: 24px; }
@@ -184,7 +270,7 @@
         .rate-stars button.lit { color: var(--gold); }
 
         /* 今晚路線（底部固定列） */
-        .route-bar { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(24,24,24,0.97); border-top: 1px solid var(--gold); padding: 12px 20px; z-index: 900; backdrop-filter: blur(6px); }
+        .route-bar { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(24,24,24,0.97); border-top: 1px solid var(--gold); padding: 12px 20px; z-index: 900; backdrop-filter: blur(6px); max-height: 52vh; overflow-y: auto; }
         .route-bar[hidden] { display: none; }
         .route-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
         .route-title { color: var(--gold); font-weight: bold; font-size: 0.9rem; white-space: nowrap; }
@@ -196,7 +282,7 @@
         .route-dist { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
 
         @media (max-width: 600px) {
-            body { padding: 16px 16px 110px; }
+            body { padding: 16px 16px 180px; }
             .filter-panel { grid-template-columns: 1fr; }
             .region-row { flex-direction: column; gap: 6px; }
             .region-label { flex: none; text-align: left; border-right: none; border-bottom: 1px solid var(--line); padding: 0 0 2px; width: 100%; }
@@ -231,8 +317,12 @@
             <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
         </button>
         <div class="toolbar-btns">
+            <button class="btn btn-ghost" id="locateBtn" title="用定位找出離你最近的酒吧">📍 離我最近</button>
+            <button class="btn btn-ghost" id="randomBtn" title="從目前篩選結果隨機抽一間">🎲 今晚喝哪間</button>
             <button class="btn btn-ghost" id="myListBtn">📖 我的酒單</button>
+            <button class="btn btn-ghost" id="recapBtn" title="看看自己跑了多少間">📊 回顧</button>
             <button class="btn btn-ghost" id="shareBtn" title="複製目前篩選條件的連結">🔗 分享</button>
+            <button class="btn btn-ghost" id="themeBtn" title="切換主題">☀️ 淺色</button>
         </div>
     </div>
 
@@ -344,9 +434,22 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="recapOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="recapTitle">
+        <button class="modal-close" id="recapClose" aria-label="關閉">&times;</button>
+        <h2 class="modal-title" id="recapTitle">📊 我的跑吧回顧</h2>
+        <div class="recap-head">
+            <label for="recapYear">統計範圍</label>
+            <select id="recapYear"></select>
+        </div>
+        <div id="recapBody"></div>
+    </div>
+</div>
+
 <div class="toast" id="toast" hidden></div>
 
 <div class="route-bar" id="routeBar" hidden>
+    <div class="route-schedule" id="routeSchedule"></div>
     <div class="route-inner">
         <span class="route-title">🍺 今晚路線</span>
         <div class="route-chips" id="routeChips"></div>

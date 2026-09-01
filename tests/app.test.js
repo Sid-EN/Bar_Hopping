@@ -24,6 +24,30 @@ function boot(url = 'https://example.com/index.html') {
     const { window } = dom;
     window.alert = m => { window.__alert = m; };
     window.prompt = (a, b) => b;
+    window.matchMedia = window.matchMedia || (q => ({ matches: false, addListener() {}, removeListener() {} }));
+
+    // 定位替身：預設回傳台北車站附近
+    window.__geoPos = { coords: { latitude: 25.0478, longitude: 121.5170 } };
+    window.__geoErr = null;
+    Object.defineProperty(window.navigator, 'geolocation', {
+        value: { getCurrentPosition: (ok, err) => window.__geoErr ? err(window.__geoErr) : ok(window.__geoPos) },
+        configurable: true });
+
+    // Canvas 替身：記錄畫了哪些文字，並讓 toBlob 回傳假的 blob
+    window.__canvasText = [];
+    window.HTMLCanvasElement.prototype.getContext = function () {
+        const rec = window.__canvasText;
+        return { fillRect() {}, strokeRect() {}, fillText(t) { rec.push(String(t)); },
+                 measureText: t => ({ width: String(t).length * 20 }),
+                 set font(v) {}, get font() { return ''; },
+                 set fillStyle(v) {}, get fillStyle() { return ''; },
+                 set strokeStyle(v) {}, get strokeStyle() { return ''; },
+                 set lineWidth(v) {}, get lineWidth() { return 0; },
+                 set textAlign(v) {}, get textAlign() { return ''; } };
+    };
+    window.HTMLCanvasElement.prototype.toBlob = function (cb) { cb(new window.Blob(['x'], { type: 'image/png' })); };
+    window.URL.createObjectURL = () => 'blob:fake';
+    window.URL.revokeObjectURL = () => {};
 
     let clipboard = null;
     Object.defineProperty(window.navigator, 'clipboard', {
@@ -50,7 +74,9 @@ function boot(url = 'https://example.com/index.html') {
         fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8') + '\n' +
         ';window.__t = { BARS, PRICE_TIERS, hasGeo, hasAward, isFriend, barKey, byKey, store, saveStore,' +
         ' handleAction, update, renderRoute, renderList, openList, selectCity, stateToUrl, autoSortRoute,' +
-        ' parseHours, openState, selectedTypes, selectedTraits, distanceKm };');
+        ' parseHours, openState, selectedTypes, selectedTraits, distanceKm, routeSchedule, yearStats,' +
+        ' sinceText, myNote, visitLog, applyTheme, toggleTheme, randomPick, shareCard, lastFiltered,' +
+        ' budgetText, statusText };');
 
     const api = window.__t;
     return {
@@ -281,6 +307,175 @@ function boot(url = 'https://example.com/index.html') {
     e.click(e.qsa('#traitChips .chip').find(c => c.textContent.includes('獲獎')));
     e.click(e.$('viewList'));
     t('切回清單', !e.$('mapView').classList.contains('active'));
+}
+
+
+// ---------------------------------------------------------------- 離我最近
+{
+    const e = boot();
+    section('離我最近');
+    const T = e.api;
+    t('初始沒有距離排序選項', !e.$('sortFilter').querySelector('[value="near"]'));
+    e.click(e.$('locateBtn'));
+    t('定位後出現距離排序', !!e.$('sortFilter').querySelector('[value="near"]'));
+    t('自動切到距離排序', e.$('sortFilter').value === 'near');
+    t('按鈕標示已定位', e.$('locateBtn').classList.contains('on'));
+    t('卡片顯示距離', e.$('barGrid').innerHTML.includes('距離'));
+
+    const names = [...e.$('barGrid').innerHTML.matchAll(/class="bar-name">([^<]+)</g)].map(m => m[1]);
+    const at = n => T.BARS.find(b => b.name === n.replace(/&amp;/g, '&').replace(/&#39;/g, "'"));
+    const me = { lat: 25.0478, lng: 121.5170 };
+    const first10 = names.slice(0, 10).map(at).filter(b => b && T.hasGeo(b));
+    t('距離為遞增排序', first10.every((b, i) => i === 0 || T.distanceKm(me, first10[i - 1]) <= T.distanceKm(me, b)));
+    const last = names.slice(-5).map(at).filter(Boolean);
+    t('無座標的排最後', last.every(b => !T.hasGeo(b)));
+
+    // 拒絕授權時的處理
+    const e2 = boot();
+    e2.window.__geoErr = { code: 1, message: 'denied' };
+    e2.click(e2.$('locateBtn'));
+    t('拒絕定位有提示', e2.$('toast').textContent.includes('拒絕'), e2.$('toast').textContent);
+    t('拒絕後按鈕恢復', !e2.$('locateBtn').disabled);
+}
+
+// ---------------------------------------------------------------- 路線時間推算
+{
+    const e = boot();
+    section('路線營業時間檢查');
+    const T = e.api;
+
+    // 用固定資料驗證推算邏輯
+    const A = { name: 'A', city: '台北市', lat: 25.04, lng: 121.51, hours: '18:00–02:00' };
+    const B = { name: 'B', city: '台北市', lat: 25.05, lng: 121.52, hours: '18:00–02:00' };
+    const C = { name: 'C', city: '台北市', lat: 25.06, lng: 121.53, hours: '18:00–21:00' };
+    const start = new Date(2026, 7, 30, 20, 0);      // 週日 20:00 出發
+    const plan = T.routeSchedule([A, B, C], start);
+    t('第一攤即出發時間', plan[0].arrive.getHours() === 20 && plan[0].arrive.getMinutes() === 0);
+    t('第二攤晚於第一攤至少 1 小時', (plan[1].arrive - plan[0].arrive) >= 60 * 60000);
+    t('第一攤營業中', plan[0].warn === null, plan[0].warn);
+    t('第三攤 21 點關會被標記', plan[2].warn === 'closed' || plan[2].warn === 'closing', plan[2].warn);
+    const unk = T.routeSchedule([{ name: 'X', city: '台北市', hours: '營業至02:00' }], start);
+    t('無法解析標為 unknown', unk[0].warn === 'unknown');
+
+    // UI
+    const rkeys = T.BARS.filter(T.hasGeo).filter(b => b.city === '台北市').slice(0, 3).map(T.barKey);
+    rkeys.forEach(k => T.handleAction('route', k)); T.update();
+    t('路線列出現時間表', e.$('routeSchedule').innerHTML.includes('sched-list'));
+    t('時間表有 3 攤', e.qsa('.sched-item').length === 3, e.qsa('.sched-item').length);
+    t('有出發時間輸入框', !!e.$('routeStart'));
+    t('每攤都有抵達時間', e.qsa('.sched-time').every(el => /^\d{2}:\d{2}$/.test(el.textContent)));
+    t('有整體結論', e.$('routeSchedule').innerHTML.includes('sched-alert') || e.$('routeSchedule').innerHTML.includes('sched-ok'));
+    e.click(e.$('routeClear'));
+    t('清空後時間表消失', e.$('routeSchedule').innerHTML === '');
+}
+
+// ---------------------------------------------------------------- 隨機推薦
+{
+    const e = boot();
+    section('今晚喝哪間');
+    e.click(e.$('randomBtn'));
+    t('隨機抽出後開啟詳細頁', !e.$('modalOverlay').hidden);
+    t('有提示訊息', e.$('toast').textContent.includes('就決定是你了'));
+    e.click(e.$('modalClose'));
+    // 篩到沒結果時要擋下來
+    e.$('searchInput').value = 'zzz不可能存在的店zzz'; e.input(e.$('searchInput'));
+    e.click(e.$('randomBtn'));
+    t('無結果時不開詳細頁', e.$('modalOverlay').hidden);
+    t('無結果時有提示', e.$('toast').textContent.includes('沒有可以抽'));
+}
+
+// ---------------------------------------------------------------- 筆記與到訪紀錄
+{
+    const e = boot();
+    section('個人筆記與到訪紀錄');
+    const T = e.api;
+    const b = T.BARS[0], k = T.barKey(b);
+
+    T.handleAction('visited', k); T.update();
+    t('打卡後記錄今天日期', T.visitLog(b).length === 1);
+    e.click(e.qsa('.bar-card')[0]);
+    t('詳細頁出現到訪區塊', !!e.$('noteInput'));
+    t('顯示到訪次數', e.window.document.querySelector('.visit-since').textContent.includes('1 次'));
+
+    e.$('noteInput').value = '長島冰茶很濃，下次帶朋友來';
+    e.$('noteInput').dispatchEvent(new e.window.Event('focusout', { bubbles: true }));
+    t('筆記自動儲存', T.myNote(b) === '長島冰茶很濃，下次帶朋友來', T.myNote(b));
+    t('儲存有提示', e.$('toast').textContent.includes('筆記已儲存'));
+    t('卡片顯示筆記摘要', e.$('barGrid').innerHTML.includes('長島冰茶'));
+
+    T.handleAction('revisit', k); T.update();
+    t('再訪同一天不重複計算', T.visitLog(b).length === 1, T.visitLog(b).length);
+    T.store.visited[k].visits = ['2026-01-15', '2026-06-20']; T.saveStore(); T.update();
+    t('多次到訪正確計數', e.$('barGrid').innerHTML.includes('去過 2 次'));
+    t('相對時間文字', T.sinceText('2026-08-29').length > 0);
+    t('備份含筆記', JSON.parse(e.window.localStorage.getItem('barbible.v1')).visited[k].note.includes('長島'));
+}
+
+// ---------------------------------------------------------------- 年度回顧
+{
+    const e = boot();
+    section('年度回顧');
+    const T = e.api;
+    const bars = T.BARS.slice(0, 5);
+    bars.forEach((b, i) => {
+        const k = T.barKey(b);
+        T.store.visited[k] = { rating: i < 2 ? 5 : 4, date: '2026-03-0' + (i + 1),
+                               visits: ['2026-03-0' + (i + 1), '2026-07-0' + (i + 1)] };
+    });
+    T.saveStore(); T.update();
+
+    const st = T.yearStats('2026');
+    t('統計酒吧數', st.bars === 5, st.bars);
+    t('統計到訪次數', st.visitCount === 10, st.visitCount);
+    t('計算平均給分', Math.abs(st.avg - 4.4) < 0.01, st.avg);
+    t('列出五星愛店', st.favourites.length === 2, st.favourites.length);
+    t('有最常去的縣市', !!st.topCity);
+    const st2 = T.yearStats('2020');
+    t('沒紀錄的年份為 0', st2.bars === 0);
+
+    e.click(e.$('recapBtn'));
+    t('回顧視窗開啟', !e.$('recapOverlay').hidden);
+    t('年份選單有 2026', e.$('recapYear').innerHTML.includes('2026'));
+    t('顯示統計卡片', e.qsa('.recap-card').length === 4, e.qsa('.recap-card').length);
+    t('顯示總進度', e.$('recapBody').innerHTML.includes('已攻略全台'));
+    e.click(e.$('recapClose'));
+    t('可以關閉', e.$('recapOverlay').hidden);
+}
+
+// ---------------------------------------------------------------- 分享卡片圖
+{
+    const e = boot();
+    section('分享卡片圖');
+    const T = e.api;
+    const bar = T.BARS.find(b => b.rating && b.note) || T.BARS[0];
+    e.api.shareCard(bar);
+    const txt = e.window.__canvasText.join(' ');
+    t('圖上有店名', txt.includes(bar.name), txt.slice(0, 60));
+    t('圖上有品牌名', txt.includes('TAIWAN BAR BIBLE'));
+    t('圖上有縣市', txt.includes(bar.city));
+    t('圖上有飲酒警語', txt.includes('未成年請勿飲酒'));
+    if (bar.rating) t('圖上有評分', txt.includes(String(bar.rating)));
+
+    e.click(e.qsa('.bar-card')[0]);
+    t('詳細頁有產生分享圖按鈕', !!e.window.document.querySelector('[data-act="card"]'));
+}
+
+// ---------------------------------------------------------------- 主題切換
+{
+    const e = boot();
+    section('淺色 / 深色主題');
+    t('預設為深色', e.window.document.documentElement.dataset.theme === 'dark',
+       e.window.document.documentElement.dataset.theme);
+    e.click(e.$('themeBtn'));
+    t('切換到淺色', e.window.document.documentElement.dataset.theme === 'light');
+    t('按鈕文字改變', e.$('themeBtn').textContent.includes('深色'));
+    t('theme-color 同步', e.window.document.querySelector('meta[name="theme-color"]').getAttribute('content') === '#f7f4ec');
+    t('偏好有存起來', e.window.localStorage.getItem('barbible.theme') === 'light');
+    e.click(e.$('themeBtn'));
+    t('切回深色', e.window.document.documentElement.dataset.theme === 'dark');
+
+    const e2 = boot();
+    t('重新載入沿用偏好', e2.window.document.documentElement.dataset.theme === 'dark');
 }
 
 console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');
