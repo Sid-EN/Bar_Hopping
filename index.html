@@ -214,6 +214,19 @@
         .gh-status.err { color: var(--closed); }
         .gh-help { color: var(--muted); font-size: 0.75rem; line-height: 1.7; }
         .gh-help a { color: var(--gold); }
+        .token-row { display: flex; gap: 8px; align-items: center; }
+        .token-row input { flex: 1; min-width: 0; }
+        .token-row .icon-btn { flex: 0 0 34px; height: 34px; font-size: 0.9rem; }
+        .token-row .icon-btn.on { border-color: var(--gold); color: var(--gold); }
+        .gh-diag { font-size: 0.78rem; line-height: 1.8; background: #262626; border-radius: 8px;
+                   padding: 10px 14px; margin-top: 4px; }
+        .gh-diag[hidden] { display: none; }
+        .gh-diag .step { display: block; }
+        .gh-diag .ok { color: var(--open); }
+        .gh-diag .bad { color: var(--closed); }
+        .gh-diag .skip { color: var(--muted); }
+        .gh-diag .fix { color: var(--gold); margin-top: 6px; display: block; }
+        html[data-theme="light"] .gh-diag { background: #f4f0e4; }
         .gh-expiry { font-weight: normal; font-size: 0.75rem; color: var(--muted); margin-left: 6px; }
         .gh-expiry.soon { color: var(--gold); }
         .gh-expiry.expired { color: var(--closed); }
@@ -609,8 +622,16 @@
                 </label>
                 <label>
                     <span class="f-title">存取權杖 <span class="gh-expiry" id="ghExpiry"></span></span>
-                    <input type="password" id="ghToken" placeholder="github_pat_..." autocomplete="off">
-                    <span class="f-hint" id="ghTokenHint">貼上後按「儲存設定」。之後只會顯示遮蔽後的樣子。</span>
+                    <div class="token-row">
+                        <input type="password" id="ghToken" placeholder="github_pat_..." autocomplete="off" spellcheck="false">
+                        <button type="button" class="icon-btn" id="ghReveal" title="顯示／隱藏權杖" aria-label="顯示或隱藏權杖">👁</button>
+                    </div>
+                    <span class="f-hint" id="ghTokenHint">貼上後按「儲存設定」。</span>
+                </label>
+                <label>
+                    <span class="f-title">有效期至</span>
+                    <input type="date" id="ghExpiryInput">
+                    <span class="f-hint">填你在 GitHub 上設定的到期日，快到期時畫面會提醒。不填就不顯示。</span>
                 </label>
                 <div class="gh-actions">
                     <button type="button" class="btn btn-ghost" id="ghSave">儲存設定</button>
@@ -618,6 +639,7 @@
                     <button type="button" class="btn btn-ghost danger" id="ghClear">清除權杖</button>
                     <span id="ghStatus" class="gh-status"></span>
                 </div>
+                <div class="gh-diag" id="ghDiag" hidden></div>
                 <div class="gh-help">
                     權杖只存在這台瀏覽器，不會上傳。共用電腦請勿儲存，用完按「清除權杖」。<br>
                     <a href="https://github.com/Sid-EN/Bar_Hopping#-儲存並寫回-repo" target="_blank" rel="noopener">

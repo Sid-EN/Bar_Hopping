@@ -89,7 +89,8 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         ' budgetText, statusText, openForm, closeForm, readForm, validateBar, toDataJsLine, pushToRepo,' +
         ' rebuildBars, refreshForm, renderPreview, validateNow, CITY_ORDER, normName, findDuplicate,' +
         ' insertIntoDataJs, findDuplicateInSource, parseDataJs, b64encode, b64decode,' +
-        ' loadGh, saveGh, fillGhForm, saveGhFromForm, formDirty, snapshotForm, applyLocalChange, removeLocal };');
+        ' loadGh, saveGh, fillGhForm, saveGhFromForm, formDirty, snapshotForm, applyLocalChange, removeLocal,' +
+        ' expiryInfo, cleanToken, tokenLooksValid, applyReveal, testGh };');
 
     const api = window.__t;
     return {
@@ -752,24 +753,26 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('權杖欄位為 password 型別', e.$('ghToken').type === 'password');
     t('repo 有預設值', e.$('ghRepo').value === 'Sid-EN/Bar_Hopping');
 
-    e.$('ghToken').value = 'github_pat_TESTTOKEN1234ABCD';
+    const TOK1 = 'github_pat_TESTTOKEN1234567890123456ABCD';
+    e.$('ghToken').value = TOK1;
     e.click(e.$('ghSave'));
-    t('權杖已儲存', T.loadGh().token === 'github_pat_TESTTOKEN1234ABCD');
+    t('權杖已儲存', T.loadGh().token === TOK1, T.loadGh().token);
     t('畫面不再顯示權杖原文', !e.$('ghToken').value.includes('TESTTOKEN'), e.$('ghToken').value);
     t('顯示為遮蔽字元', /^[•]+$/.test(e.$('ghToken').value));
     t('提示只露出末四碼', e.$('ghTokenHint').textContent.includes('ABCD') &&
                           !e.$('ghTokenHint').textContent.includes('TESTTOKEN'));
     t('設定好後區塊自動收合', !e.$('ghBox').open);
-    t('狀態顯示已連線', e.$('ghStatus').textContent.includes('已連線'));
+    t('儲存後提示去測試連線', e.$('ghStatus').textContent.includes('測試連線'), e.$('ghStatus').textContent);
 
     // 不改動遮蔽欄位再存一次，權杖不能被洗掉
     e.click(e.$('ghSave'));
-    t('遮蔽狀態下重存不會清掉權杖', T.loadGh().token === 'github_pat_TESTTOKEN1234ABCD');
+    t('遮蔽狀態下重存不會清掉權杖', T.loadGh().token === TOK1);
 
     // 換新權杖
-    e.$('ghToken').value = 'github_pat_NEWTOKEN5678WXYZ';
+    const TOK2 = 'github_pat_NEWTOKEN98765432109876WXYZ';
+    e.$('ghToken').value = TOK2;
     e.click(e.$('ghSave'));
-    t('可以換成新權杖', T.loadGh().token === 'github_pat_NEWTOKEN5678WXYZ');
+    t('可以換成新權杖', T.loadGh().token === TOK2, T.loadGh().token);
 
     e.click(e.$('ghClear'));
     t('清除後權杖為空', T.loadGh().token === '');
@@ -787,39 +790,93 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('data.js 沒有權杖', !TOKEN_RE.test(fs.readFileSync(path.join(ROOT, 'data.js'), 'utf8')));
 }
 
-// ---------------------------------------------------------------- 權杖到期日顯示
+// ---------------------------------------------------------------- 權杖到期日（使用者自填）
 {
     const e = boot();
     section('權杖到期日');
     const T = e.api;
 
     e.click(e.$('addBtn'));
-    const el = e.$('ghExpiry');
-    t('到期日欄位存在', !!el);
-    t('顯示設定的到期日', el.textContent.includes('2027/09/01'), el.textContent);
-    t('未到期時不上警告色', !el.className.includes('soon') && !el.className.includes('expired'), el.className);
+    t('有到期日輸入欄位', !!e.$('ghExpiryInput'));
+    t('欄位型別為日期', e.$('ghExpiryInput').type === 'date');
+    t('未設定時不顯示到期文字', e.$('ghExpiry').textContent === '', e.$('ghExpiry').textContent);
 
-    // 常數是唯一來源，README 才有地方可指
-    const appSrc = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
-    const m = appSrc.match(/const GH_TOKEN_EXPIRY = '([^']*)'/);
-    t('到期日集中在單一常數', !!m, '找不到 GH_TOKEN_EXPIRY');
-    t('常數格式為 YYYY-MM-DD', /^\d{4}-\d{2}-\d{2}$/.test(m[1]), m[1]);
-    t('README 有寫到期日與修改位置',
-        fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8').includes('GH_TOKEN_EXPIRY'));
+    e.$('ghToken').value = 'github_pat_' + 'A'.repeat(30);
+    e.$('ghExpiryInput').value = '2027-09-01';
+    e.click(e.$('ghSave'));
+    t('到期日已儲存', T.loadGh().expiry === '2027-09-01', T.loadGh().expiry);
+    t('欄位旁顯示到期日', e.$('ghExpiry').textContent.includes('2027/09/01'), e.$('ghExpiry').textContent);
+    t('未接近到期時不上色', !e.$('ghExpiry').className.includes('soon'));
 
-    // 不同日期下的呈現
-    // 取出 expiryInfo 的原始碼，換上不同的到期日再跑一次
-    const fnSrc = appSrc.slice(appSrc.indexOf('function expiryInfo'), appSrc.indexOf('function loadGh'));
-    const mk = date => new Function(
-        `const GH_TOKEN_EXPIRY = ${JSON.stringify(date)};\n${fnSrc}\nreturn expiryInfo;`)();
-    const far = mk('2099-01-01')();
+    const saved = JSON.parse(e.window.localStorage.getItem('barbible.gh'));
+    t('存進 localStorage', saved.expiry === '2027-09-01');
+    T.closeForm(true);
+    e.click(e.$('addBtn'));
+    t('重新開啟表單仍帶入', e.$('ghExpiryInput').value === '2027-09-01');
+
+    const far = T.expiryInfo('2099-01-01');
     t('遠期顯示「有效期至」', far.text.includes('有效期至') && far.cls === '');
-    const soon = mk(new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10))();
+    const soon = T.expiryInfo(new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10));
     t('30 天內轉為提醒', soon.cls === 'soon' && soon.text.includes('剩'), JSON.stringify(soon));
-    const past = mk('2020-01-01')();
+    const past = T.expiryInfo('2020-01-01');
     t('已過期標為 expired', past.cls === 'expired' && past.text.includes('請更換'), JSON.stringify(past));
-    const none = mk('')();
-    t('設空字串則不顯示', none === null);
+    t('沒填則不顯示', T.expiryInfo('') === null);
+    t('亂填的日期不會壞掉', T.expiryInfo('不是日期') === null);
+
+    e.click(e.$('ghClear'));
+    t('清除權杖後到期日保留', T.loadGh().expiry === '2027-09-01', T.loadGh().expiry);
+}
+
+// ---------------------------------------------------------------- 權杖貼上與檢視
+{
+    const e = boot();
+    section('權杖貼上與檢視');
+    const T = e.api;
+    const GOOD = 'github_pat_' + 'B'.repeat(30);
+
+    t('清掉遮蔽圓點', T.cleanToken('\u2022'.repeat(12) + GOOD) === GOOD);
+    t('清掉空白', T.cleanToken('  ' + GOOD + ' \n') === GOOD);
+    t('正常權杖不受影響', T.cleanToken(GOOD) === GOOD);
+    t('fine-grained 格式通過', T.tokenLooksValid(GOOD).ok);
+    t('classic 格式也通過', T.tokenLooksValid('ghp_' + 'C'.repeat(36)).ok);
+    t('混到圓點的被判為無效', !T.tokenLooksValid('\u2022\u2022\u2022\u2022' + GOOD).ok);
+    t('空字串無效', !T.tokenLooksValid('').ok);
+    t('亂打的無效', !T.tokenLooksValid('abcdefg').ok);
+
+    e.click(e.$('addBtn'));
+    const input = e.$('ghToken');
+
+    // 貼上時混到遮蔽字元 → 輸入當下就清乾淨
+    input.value = '\u2022'.repeat(12) + GOOD;
+    e.input(input);
+    t('輸入當下就清掉圓點', input.value === GOOD, input.value);
+    e.click(e.$('ghSave'));
+    t('存進去的是乾淨的權杖', T.loadGh().token === GOOD, T.loadGh().token);
+
+    t('預設為密文', input.type === 'password');
+    t('預設顯示遮蔽字串', /^[\u2022]+$/.test(input.value), input.value);
+    e.click(e.$('ghReveal'));
+    t('按眼睛後變明文', input.type === 'text');
+    t('顯示完整權杖', input.value === GOOD, input.value);
+    t('按鈕標示為已開啟', e.$('ghReveal').classList.contains('on'));
+    e.click(e.$('ghReveal'));
+    t('再按一次變回密文', input.type === 'password');
+    t('內容變回遮蔽', /^[\u2022]+$/.test(input.value));
+
+    input.dispatchEvent(new e.window.Event('focus', { bubbles: true }));
+    t('聚焦時清空遮蔽字串', input.value === '');
+    t('權杖本身沒被清掉', T.loadGh().token === GOOD);
+
+    input.value = 'this-is-not-a-token';
+    e.click(e.$('ghSave'));
+    t('格式錯誤不會存進去', T.loadGh().token === '', T.loadGh().token);
+    t('顯示錯誤診斷', !e.$('ghDiag').hidden && e.$('ghDiag').textContent.includes('格式'));
+    t('狀態列標示未儲存', e.$('ghStatus').textContent.includes('尚未儲存'));
+
+    T.saveGh({ repo: 'Sid-EN/Bar_Hopping', token: GOOD, expiry: '' });
+    T.fillGhForm();
+    e.click(e.$('ghSave'));
+    t('沒改動時沿用原權杖', T.loadGh().token === GOOD);
 }
 
 console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');

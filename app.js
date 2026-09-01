@@ -915,17 +915,14 @@ async function copyDataJs() {
 const GH_KEY = 'barbible.gh';
 const GH_DEFAULT_REPO = 'Sid-EN/Bar_Hopping';
 
-// 目前使用中的權杖有效期限。換新權杖時記得一併改這裡（格式 YYYY-MM-DD），
-// 到期前 30 天畫面上會轉為警告色提醒。設成空字串就不顯示。
-const GH_TOKEN_EXPIRY = '2027-09-01';
-
+// 權杖到期日由使用者在設定裡自行填寫（格式 YYYY-MM-DD），和權杖一起存在瀏覽器。
 // 依到期日產生提示文字與狀態
-function expiryInfo() {
-    if (!GH_TOKEN_EXPIRY) return null;
-    const due = new Date(GH_TOKEN_EXPIRY + 'T23:59:59');
+function expiryInfo(dateStr) {
+    if (!dateStr) return null;
+    const due = new Date(dateStr + 'T23:59:59');
     if (isNaN(due)) return null;
     const days = Math.ceil((due - Date.now()) / 86400000);
-    const shown = GH_TOKEN_EXPIRY.replace(/-/g, '/');
+    const shown = dateStr.replace(/-/g, '/');
     if (days < 0) return { text: `（已於 ${shown} 到期，請更換）`, cls: 'expired' };
     if (days <= 30) return { text: `（${shown} 到期，剩 ${days} 天）`, cls: 'soon' };
     return { text: `（有效期至 ${shown}）`, cls: '' };
@@ -934,8 +931,24 @@ function expiryInfo() {
 function loadGh() {
     try {
         const g = JSON.parse(localStorage.getItem(GH_KEY) || '{}');
-        return { repo: g.repo || GH_DEFAULT_REPO, token: g.token || '' };
-    } catch (e) { return { repo: GH_DEFAULT_REPO, token: '' }; }
+        return { repo: g.repo || GH_DEFAULT_REPO, token: g.token || '', expiry: g.expiry || '' };
+    } catch (e) { return { repo: GH_DEFAULT_REPO, token: '', expiry: '' }; }
+}
+
+// 貼上時如果沒有先全選，遮蔽字元會殘留在前面（例如 ••••••••••••github_pat_xxx），
+// 那樣存起來的權杖是壞的，每次呼叫都會 401。這裡一律清掉非權杖字元。
+function cleanToken(raw) {
+    return String(raw || '')
+        .replace(/[•·*\s]/g, '')     // 遮蔽用的圓點、星號與空白
+        .trim();
+}
+
+// 粗略檢查格式，讓使用者在送出前就知道貼錯了
+function tokenLooksValid(tok) {
+    if (!tok) return { ok: false, why: '沒有輸入權杖' };
+    if (/^github_pat_[A-Za-z0-9_]{20,}$/.test(tok)) return { ok: true, kind: 'fine-grained' };
+    if (/^gh[pousr]_[A-Za-z0-9]{30,}$/.test(tok)) return { ok: true, kind: 'classic' };
+    return { ok: false, why: '格式看起來不對，應該以 github_pat_ 或 ghp_ 開頭；請確認有複製到完整內容' };
 }
 function saveGh(g) {
     try { localStorage.setItem(GH_KEY, JSON.stringify(g)); } catch (e) { /* 無痕模式，忽略 */ }
@@ -1183,47 +1196,182 @@ function setGhStatus(msg, kind) {
     el.className = 'gh-status' + (kind ? ' ' + kind : '');
 }
 
+// 逐步檢查，把「哪一關過不了」講清楚，而不是只回一句權杖無效
 async function testGh() {
-    saveGhFromForm();
+    const { token } = saveGhFromForm();
+    fillGhForm();
+    const g = loadGh();
+    const box = $('ghDiag');
+    const steps = [];
+    const render = (extra) => {
+        box.hidden = false;
+        box.innerHTML = steps.join('') + (extra || '');
+    };
+    const line = (state, text) => {
+        const icon = state === 'ok' ? '✓' : state === 'bad' ? '✗' : '·';
+        steps.push(`<span class="step ${state}">${icon} ${esc(text)}</span>`);
+        render();
+    };
+    const fix = html => render(`<span class="fix">${html}</span>`);
+
+    steps.length = 0;
     setGhStatus('測試中…');
+
+    // 0. 格式
+    const shape = tokenLooksValid(token);
+    if (!shape.ok) {
+        line('bad', '權杖格式：' + shape.why);
+        if (token && /[•·*]/.test($('ghToken').value)) {
+            fix('看起來是貼上時混到了遮蔽字元。請在欄位裡<b>全選後刪除</b>，再貼一次完整的權杖。');
+        } else {
+            fix('請確認複製到的是完整的權杖（GitHub 只在產生當下顯示一次）。');
+        }
+        setGhStatus('權杖格式不正確', 'err');
+        return;
+    }
+    line('ok', `權杖格式正確（${shape.kind}，結尾 …${token.slice(-4)}）`);
+
+    const call = async (path) => {
+        const res = await fetch(`https://api.github.com/${path}`, {
+            headers: {
+                'Accept': 'application/vnd.github+json',
+                'Authorization': `Bearer ${token}`,
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+        });
+        let body = null;
+        try { body = await res.json(); } catch (e) { /* 忽略非 JSON 回應 */ }
+        return { status: res.status, body };
+    };
+
     try {
-        const file = await ghFetch('contents/data.js');
-        setGhStatus(`連線正常，讀到 data.js（${(file.size / 1024).toFixed(0)} KB）`, 'ok');
+        // 1. 權杖本身有效嗎
+        const me = await call('user');
+        if (me.status === 401) {
+            line('bad', '權杖驗證失敗（401）');
+            fix('這把權杖無效、已過期或已被撤銷。<br>' +
+                '常見原因：權杖只在產生當下顯示一次，複製時漏字；或先前貼到聊天室後已被 GitHub 自動撤銷。<br>' +
+                '請到 GitHub 重新產生一把，再貼上來。');
+            setGhStatus('權杖無效或已過期', 'err');
+            return;
+        }
+        if (me.status !== 200) {
+            line('bad', `權杖驗證回傳 ${me.status}：${(me.body && me.body.message) || ''}`);
+            setGhStatus('權杖驗證失敗', 'err');
+            return;
+        }
+        line('ok', `權杖有效，帳號：${me.body.login}`);
+
+        // 2. 這把權杖看得到目標 repo 嗎
+        const repo = await call(`repos/${g.repo}`);
+        if (repo.status === 404) {
+            line('bad', `看不到 repo「${g.repo}」（404）`);
+            fix('兩種可能：<br>' +
+                '1. Repository 欄位打錯（要填 <code>擁有者/repo名稱</code>）<br>' +
+                '2. 產生權杖時 <b>Repository access</b> 沒有勾到這個 repo。' +
+                '請回 GitHub 編輯該權杖，把這個 repo 加進去。');
+            setGhStatus('權杖沒有這個 repo 的存取權', 'err');
+            return;
+        }
+        if (repo.status !== 200) {
+            line('bad', `讀取 repo 回傳 ${repo.status}：${(repo.body && repo.body.message) || ''}`);
+            setGhStatus('無法讀取 repo', 'err');
+            return;
+        }
+        line('ok', `找得到 repo：${repo.body.full_name}`);
+
+        // 3. 有寫入權限嗎
+        const canPush = repo.body.permissions && repo.body.permissions.push;
+        if (!canPush) {
+            line('bad', '只有讀取權限，不能寫入');
+            fix('請回 GitHub 編輯這把權杖，把 <b>Permissions → Repository permissions → Contents</b> ' +
+                '改成 <b>Read and write</b>。');
+            setGhStatus('權限不足，無法寫入', 'err');
+            return;
+        }
+        line('ok', '具備寫入權限（Contents: Read and write）');
+
+        // 4. data.js 讀得到嗎
+        const file = await call(`repos/${g.repo}/contents/data.js`);
+        if (file.status !== 200) {
+            line('bad', `讀不到 data.js（${file.status}）`);
+            fix('確認這個 repo 的根目錄有 <code>data.js</code>。');
+            setGhStatus('找不到 data.js', 'err');
+            return;
+        }
+        line('ok', `讀到 data.js（${(file.body.size / 1024).toFixed(0)} KB）`);
+
+        setGhStatus('✓ 連線正常，可以寫回了', 'ok');
     } catch (e) {
-        setGhStatus(e.message, 'err');
+        line('bad', '連線失敗：' + e.message);
+        fix('請確認網路連線正常，且沒有被瀏覽器外掛或防火牆擋住 api.github.com。');
+        setGhStatus('連線失敗', 'err');
     }
 }
 
 const MASK = '\u2022'.repeat(12);     // 代表「已存在但不顯示」的佔位字串
 
 function saveGhFromForm() {
-    const typed = $('ghToken').value.trim();
+    const raw = $('ghToken').value;
     const g = loadGh();
+    // 欄位還是原封不動的遮蔽字串 → 代表沒要換權杖，沿用原本的
+    const untouched = raw.trim() === MASK;
+    const token = untouched ? g.token : cleanToken(raw);
     saveGh({
         repo: $('ghRepo').value.trim() || GH_DEFAULT_REPO,
-        // 欄位還是遮蔽佔位字串代表沒改動，沿用原本的權杖
-        token: (typed && typed !== MASK) ? typed : g.token
+        token,
+        expiry: $('ghExpiryInput').value || ''
     });
+    return { token, changed: !untouched };
 }
+
+let tokenRevealed = false;
 
 function fillGhForm() {
     const g = loadGh();
     $('ghRepo').value = g.repo;
+    $('ghExpiryInput').value = g.expiry || '';
 
-    const exp = expiryInfo();
+    const exp = expiryInfo(g.expiry);
     const el = $('ghExpiry');
     if (el) {
         el.textContent = exp ? exp.text : '';
         el.className = 'gh-expiry' + (exp && exp.cls ? ' ' + exp.cls : '');
     }
-    // 不把權杖原文放回畫面上，避免被旁邊的人看到或被其他腳本讀走
+
+    // 預設不把權杖原文放回畫面，按 👁 才顯示。
+    // 這裡一律覆寫欄位內容，避免上一次沒存成功的殘值被誤當成新權杖。
+    tokenRevealed = false;
+    $('ghToken').type = 'password';
     $('ghToken').value = g.token ? MASK : '';
+    syncRevealButton();
     $('ghTokenHint').textContent = g.token
-        ? `已儲存（結尾 …${g.token.slice(-4)}）。要更換請直接貼上新的權杖再按儲存。`
-        : '貼上後按「儲存設定」。之後這裡只會顯示遮蔽後的樣子，不會再顯示完整內容。';
+        ? `已儲存（結尾 …${g.token.slice(-4)}）。要更換就直接貼上新的權杖，按 👁 可檢視完整內容。`
+        : '貼上後按「儲存設定」。';
     setGhStatus(g.token ? '✓ 已連線設定' : '尚未設定權杖', g.token ? 'ok' : '');
+    $('ghDiag').hidden = true;
     // 已經設定好就把設定區收起來，平常不用再看到它
     $('ghBox').open = !g.token;
+}
+
+function syncRevealButton() {
+    const btn = $('ghReveal');
+    btn.classList.toggle('on', tokenRevealed);
+    btn.textContent = tokenRevealed ? '🙈' : '👁';
+    btn.title = tokenRevealed ? '隱藏權杖' : '顯示權杖';
+}
+
+// 切換檢視。只負責在「遮蔽字串 ↔ 已儲存的權杖」之間互換，
+// 使用者自己打進去、還沒儲存的內容一律原樣保留。
+function applyReveal() {
+    const g = loadGh();
+    const input = $('ghToken');
+    input.type = tokenRevealed ? 'text' : 'password';
+    if (g.token) {
+        if (tokenRevealed && input.value === MASK) input.value = g.token;
+        else if (!tokenRevealed && input.value === g.token) input.value = MASK;
+    }
+    syncRevealButton();
 }
 
 // ===== 年度回顧 =====
@@ -1852,16 +2000,39 @@ $('barForm').addEventListener('change', refreshForm);
 $('formCopy').addEventListener('click', copyDataJs);
 $('formPush').addEventListener('click', e => { e.preventDefault(); pushToRepo(); });
 $('ghSave').addEventListener('click', () => {
-    saveGhFromForm();
+    const { token, changed } = saveGhFromForm();
+    // 換了新權杖就先檢查格式，貼壞的當場擋下來，不用等到寫回才失敗
+    if (changed && token) {
+        const shape = tokenLooksValid(token);
+        if (!shape.ok) {
+            $('ghDiag').hidden = false;
+            $('ghDiag').innerHTML = `<span class="step bad">✗ ${esc(shape.why)}</span>` +
+                '<span class="fix">請在欄位裡<b>全選後刪除</b>，再貼一次完整的權杖（避免混到遮蔽字元）。</span>';
+            setGhStatus('權杖格式不正確，尚未儲存', 'err');
+            saveGh({ ...loadGh(), token: '' });    // 不要留一把壞的在裡面
+            return;
+        }
+    }
     fillGhForm();
-    if (loadGh().token) setGhStatus('✓ 設定已儲存，已連線', 'ok');
-    else setGhStatus('已儲存 repo 設定，但還沒有權杖', '');
+    if (loadGh().token) setGhStatus('✓ 設定已儲存，建議按「測試連線」確認', 'ok');
+    else setGhStatus('已儲存 repo 與到期日，但還沒有權杖', '');
 });
 $('ghTest').addEventListener('click', testGh);
 $('ghClear').addEventListener('click', () => {
-    saveGh({ repo: $('ghRepo').value.trim() || GH_DEFAULT_REPO, token: '' });
+    saveGh({ repo: $('ghRepo').value.trim() || GH_DEFAULT_REPO, token: '', expiry: $('ghExpiryInput').value || '' });
+    $('ghToken').value = '';
     fillGhForm();
     setGhStatus('權杖已清除', 'ok');
+});
+$('ghReveal').addEventListener('click', () => { tokenRevealed = !tokenRevealed; applyReveal(); });
+// 欄位還是遮蔽字串時一點進去就清空，避免使用者直接貼上而混到圓點
+$('ghToken').addEventListener('focus', () => {
+    if ($('ghToken').value === MASK) $('ghToken').value = '';
+});
+// 保險：萬一還是貼進了遮蔽字元，輸入當下就清掉
+$('ghToken').addEventListener('input', () => {
+    const el = $('ghToken');
+    if (el.value !== MASK && /[•·]/.test(el.value)) el.value = cleanToken(el.value);
 });
 $('formDelete').addEventListener('click', () => { if (editingKey) deleteFromRepo(editingKey); });
 
