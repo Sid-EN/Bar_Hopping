@@ -84,6 +84,25 @@ BARS.forEach((b, i) => {
     }
 });
 
+// 同地址或同電話代表很可能是同一間店用了不同名稱（各家媒體命名常不一致），
+// 例如「Chance Bar 勸世吧」與「無心戒酒互助會-成都分會」其實是同一個地方。
+const addrKey = a => String(a || '').replace(/[\s台臺]/g, '').replace(/^\d{3,5}/, '');
+const seenAddr = new Map(), seenPhone = new Map();
+BARS.forEach((b, i) => {
+    if (b.address) {
+        const k = addrKey(b.address);
+        if (seenAddr.has(k)) warnings.push(`第 ${i + 1} 筆「${b.name}」與「${BARS[seenAddr.get(k)].name}」地址相同，是否為同一間店？`);
+        else seenAddr.set(k, i);
+    }
+    if (b.phone) {
+        const k = b.phone.replace(/\D/g, '');
+        if (k.length >= 8) {
+            if (seenPhone.has(k)) warnings.push(`第 ${i + 1} 筆「${b.name}」與「${BARS[seenPhone.get(k)].name}」電話相同，是否為同一間店？`);
+            else seenPhone.set(k, i);
+        }
+    }
+});
+
 // PRICE_TIERS 檢查
 for (const t of [1, 2, 3]) {
     if (!PRICE_TIERS[t] || !PRICE_TIERS[t].range) errors.push(`PRICE_TIERS 缺少第 ${t} 級的 range`);
