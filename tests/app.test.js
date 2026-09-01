@@ -90,7 +90,8 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         ' rebuildBars, refreshForm, renderPreview, validateNow, CITY_ORDER, normName, findDuplicate,' +
         ' insertIntoDataJs, findDuplicateInSource, parseDataJs, b64encode, b64decode,' +
         ' loadGh, saveGh, fillGhForm, saveGhFromForm, formDirty, snapshotForm, applyLocalChange, removeLocal,' +
-        ' expiryInfo, cleanToken, tokenLooksValid, applyReveal, testGh };');
+        ' expiryInfo, cleanToken, tokenLooksValid, applyReveal, testGh,' +
+        ' lastResetPoint, pruneRoute, touchRoute, personalData, syncUp, syncDown, ROUTE_RESET_HOUR };');
 
     const api = window.__t;
     return {
@@ -877,6 +878,103 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     T.fillGhForm();
     e.click(e.$('ghSave'));
     t('沒改動時沿用原權杖', T.loadGh().token === GOOD);
+}
+
+
+// ---------------------------------------------------------------- 今晚路線中午重設
+{
+    const e = boot();
+    section('今晚路線中午重設');
+    const T = e.api;
+
+    t('重設時點為中午 12 點', T.ROUTE_RESET_HOUR === 12);
+
+    const at = (h, m) => new Date(2026, 7, 30, h, m);   // 2026-08-30
+    const noonToday = new Date(2026, 7, 30, 12, 0, 0, 0).getTime();
+    const noonYesterday = new Date(2026, 7, 29, 12, 0, 0, 0).getTime();
+    t('下午時界線是今天中午', T.lastResetPoint(at(20, 0)) === noonToday);
+    t('凌晨時界線仍是昨天中午', T.lastResetPoint(at(2, 30)) === noonYesterday);
+    t('早上時界線是昨天中午', T.lastResetPoint(at(9, 0)) === noonYesterday);
+    t('剛過中午界線就換成今天', T.lastResetPoint(at(12, 1)) === noonToday);
+
+    // 剛加入的路線不該被清掉
+    const keys = T.BARS.slice(0, 3).map(T.barKey);
+    keys.forEach(k => T.handleAction('route', k));
+    T.update();
+    t('加入路線會記錄時間', typeof T.store.routeAt === 'number');
+    t('剛建立的路線不會被清', T.pruneRoute() === false && T.store.route.length === 3);
+
+    // 昨天中午之前建立的 → 清掉
+    T.store.routeAt = Date.now() - 3 * 86400000;
+    T.saveStore();
+    t('過期的路線會被清空', T.pruneRoute() === true && T.store.route.length === 0);
+    t('清空後 routeAt 也移除', T.store.routeAt === undefined);
+
+    // 跨夜情境：晚上 10 點建立，凌晨 3 點仍在
+    keys.forEach(k => T.handleAction('route', k));
+    const lastNight = new Date();
+    lastNight.setHours(22, 0, 0, 0);
+    if (lastNight > Date.now()) lastNight.setDate(lastNight.getDate() - 1);
+    T.store.routeAt = lastNight.getTime();
+    T.saveStore();
+    const kept = !T.pruneRoute();
+    t('跨夜不會被清掉（晚上建立、凌晨仍在）',
+        kept || T.lastResetPoint() > lastNight.getTime(), '取決於執行當下時間');
+
+    // 沒有 routeAt 的舊資料（升級前存的）視為過期
+    T.store.route = keys.slice();
+    delete T.store.routeAt;
+    T.saveStore();
+    t('沒有時間戳的舊路線視為過期', T.pruneRoute() === true);
+}
+
+// ---------------------------------------------------------------- 個人酒單同步
+{
+    const e = boot();
+    section('個人酒單同步');
+    const T = e.api;
+
+    t('有上傳按鈕', !!e.$('syncUpBtn'));
+    t('有取回按鈕', !!e.$('syncDownBtn'));
+
+    const k = T.barKey(T.BARS[0]);
+    T.handleAction('want', k);
+    T.handleAction('visited', k);
+    T.handleAction('note', k, '私人筆記內容');
+    T.handleAction('route', k);
+    const d = T.personalData();
+    t('包含收藏', !!d.want[k]);
+    t('包含已攻略', !!d.visited[k]);
+    t('包含筆記', d.visited[k].note === '私人筆記內容');
+    t('包含今晚路線', d.route.includes(k));
+    t('包含時間戳記', !!d.savedAt);
+    t('可序列化為 JSON', (() => { try { JSON.parse(JSON.stringify(d)); return true; } catch (x) { return false; } })());
+
+    // 沒有權杖時不會硬送出
+    T.saveGh({ repo: 'Sid-EN/Bar_Hopping', token: '', expiry: '' });
+    e.click(e.$('syncUpBtn'));
+    t('未設定權杖時擋下上傳', e.$('syncStatus').textContent.includes('權杖'), e.$('syncStatus').textContent);
+    e.click(e.$('syncDownBtn'));
+    t('未設定權杖時擋下取回', e.$('syncStatus').textContent.includes('權杖'));
+
+    // 介面上有講清楚公開性
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    t('介面明確警告 repo 是公開的', html.includes('這個 repo 是公開的'));
+    t('警告有提到筆記會公開', html.includes('寫在筆記裡的內容'));
+    t('有指引改用匯出備份', html.includes('匯出／匯入備份'));
+}
+
+// ---------------------------------------------------------------- Service Worker 不快取 API
+{
+    section('Service Worker 快取範圍');
+    const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+    t('放行 api.github.com', sw.includes("url.hostname === 'api.github.com'"));
+    t('放行帶授權標頭的請求', sw.includes("req.headers.get('Authorization')"));
+    t('只快取成功的回應', sw.includes('res.ok'));
+    t('版本已更新以清掉舊快取', /VERSION = 'barbible-v[2-9]/.test(sw));
+    // api.github.com 的判斷必須在快取邏輯之前
+    t('放行判斷在快取之前',
+        sw.indexOf("api.github.com") < sw.indexOf('caches.match(req)'));
 }
 
 console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');

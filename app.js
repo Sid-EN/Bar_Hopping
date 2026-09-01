@@ -180,6 +180,31 @@ function saveStore() {
 }
 let store = loadStore();
 
+// ===== 今晚路線的重設時點 =====
+// 每天中午 12:00 歸零。用中午當界線是因為跑吧常常跨夜到凌晨兩三點，
+// 若用午夜當界線，喝到一半清單就沒了。
+const ROUTE_RESET_HOUR = 12;
+
+function lastResetPoint(now = new Date()) {
+    const d = new Date(now);
+    d.setHours(ROUTE_RESET_HOUR, 0, 0, 0);
+    if (d > now) d.setDate(d.getDate() - 1);   // 還沒到中午 → 界線是昨天中午
+    return d.getTime();
+}
+
+// 路線有變動時記錄時間，才知道是不是上一輪留下來的
+function touchRoute() { store.routeAt = Date.now(); }
+
+// 超過重設時點就清空
+function pruneRoute() {
+    if (!store.route.length) return false;
+    if (store.routeAt && store.routeAt >= lastResetPoint()) return false;
+    store.route = [];
+    delete store.routeAt;
+    saveStore();
+    return true;
+}
+
 const isWant = b => !!store.want[barKey(b)];
 const isVisited = b => !!store.visited[barKey(b)];
 const myRating = b => (store.visited[barKey(b)] || {}).rating || 0;
@@ -499,6 +524,7 @@ function handleAction(act, key, n) {
         if (i >= 0) store.route.splice(i, 1);
         else if (store.route.length >= MAX_ROUTE) { alert(`一晚排 ${MAX_ROUTE} 攤已經很拚了，先移除幾間再加吧 🍻`); return false; }
         else store.route.push(key);
+        touchRoute();
     } else if (act === 'rate') {
         const v = store.visited[key] || { date: today(), visits: [today()] };
         store.visited[key] = { ...v, rating: Number(n) };
@@ -641,6 +667,8 @@ function renderList() {
 
 function openList(tab) {
     if (tab) listTab = tab;
+    pruneRoute();          // 開啟時順便檢查路線是否該重設
+    setSyncStatus('');
     renderList();
     $('listOverlay').hidden = false;
     document.body.style.overflow = 'hidden';
@@ -1189,6 +1217,86 @@ async function deleteFromRepo(key) {
     }
 }
 
+// ===== 個人酒單同步到 repo =====
+// 收藏、打卡、筆記、路線預設只存在瀏覽器。這裡提供選擇性同步，
+// 但 repo 是公開的，等於把這些內容公開，所以每次都要明確確認。
+const SYNC_FILE = 'my-list.json';
+
+function setSyncStatus(msg, kind) {
+    const el = $('syncStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'gh-status' + (kind ? ' ' + kind : '');
+}
+
+function personalData() {
+    return {
+        want: store.want, visited: store.visited,
+        route: store.route, routeAt: store.routeAt || null,
+        savedAt: new Date().toISOString()
+    };
+}
+
+async function syncUp() {
+    if (!loadGh().token) { setSyncStatus('請先在「➕ 新增酒吧」裡設定存取權杖', 'err'); return; }
+    const noteCount = Object.values(store.visited).filter(v => v && v.note).length;
+    const msg = `即將把你的酒單上傳到公開的 repo：\n\n` +
+        `・收藏 ${Object.keys(store.want).length} 間\n` +
+        `・已攻略 ${Object.keys(store.visited).length} 間\n` +
+        `・今晚路線 ${store.route.length} 攤\n` +
+        (noteCount ? `・個人筆記 ${noteCount} 則 ← 這些內容會變成公開的\n` : '') +
+        `\n上傳後任何人都看得到，而且會永久留在 git 歷史裡。確定要繼續嗎？`;
+    if (!confirm(msg)) { setSyncStatus('已取消', ''); return; }
+
+    setSyncStatus('上傳中…');
+    try {
+        // 已經有檔案的話要帶上 sha 才能覆蓋
+        let sha = null;
+        try { sha = (await ghFetch(`contents/${SYNC_FILE}`)).sha; } catch (e) { /* 第一次上傳，沒有舊檔 */ }
+        await ghFetch(`contents/${SYNC_FILE}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                message: '更新個人酒單\n\n由網站的我的酒單同步',
+                content: b64encode(JSON.stringify(personalData(), null, 2)),
+                ...(sha ? { sha } : {})
+            })
+        });
+        setSyncStatus('✓ 已上傳', 'ok');
+        toast('酒單已同步到 repo');
+    } catch (e) {
+        setSyncStatus('上傳失敗：' + e.message, 'err');
+    }
+}
+
+async function syncDown() {
+    if (!loadGh().token) { setSyncStatus('請先在「➕ 新增酒吧」裡設定存取權杖', 'err'); return; }
+    setSyncStatus('讀取中…');
+    try {
+        const file = await ghFetch(`contents/${SYNC_FILE}`);
+        const d = JSON.parse(b64decode(file.content));
+        const when = d.savedAt ? new Date(d.savedAt).toLocaleString('zh-TW') : '未知時間';
+        if (!confirm(`取回 ${when} 上傳的酒單：\n\n` +
+                     `・收藏 ${Object.keys(d.want || {}).length} 間\n` +
+                     `・已攻略 ${Object.keys(d.visited || {}).length} 間\n\n` +
+                     `這會覆蓋掉這台裝置目前的酒單。確定嗎？`)) {
+            setSyncStatus('已取消', '');
+            return;
+        }
+        store.want = d.want && typeof d.want === 'object' ? d.want : {};
+        store.visited = d.visited && typeof d.visited === 'object' ? d.visited : {};
+        store.route = Array.isArray(d.route) ? d.route.filter(k => byKey[k]) : [];
+        store.routeAt = d.routeAt || null;
+        pruneRoute();                      // 取回來的可能是昨天的路線
+        saveStore();
+        renderList();
+        update();
+        setSyncStatus('✓ 已取回', 'ok');
+        toast('酒單已從 repo 取回');
+    } catch (e) {
+        setSyncStatus(e.message.includes('找不到') ? 'repo 上還沒有酒單，請先上傳一次' : '取回失敗：' + e.message, 'err');
+    }
+}
+
 function setGhStatus(msg, kind) {
     const el = $('ghStatus');
     if (!el) return;
@@ -1199,8 +1307,9 @@ function setGhStatus(msg, kind) {
 // 逐步檢查，把「哪一關過不了」講清楚，而不是只回一句權杖無效
 async function testGh() {
     const { token } = saveGhFromForm();
-    fillGhForm();
+    // 測試時不呼叫 fillGhForm()，否則設定區會被收合、診斷結果一閃就不見
     const g = loadGh();
+    $('ghBox').open = true;
     const box = $('ghDiag');
     const steps = [];
     const render = (extra) => {
@@ -1575,6 +1684,7 @@ function autoSortRoute() {
         path.push(rest.splice(bi, 1)[0]);
     }
     store.route = path.map(barKey);
+    touchRoute();
     saveStore();
     update();
     if (!$('listOverlay').hidden) renderList();
@@ -1671,6 +1781,7 @@ function moveInRoute(key, delta) {
     const j = i + delta;
     if (i < 0 || j < 0 || j >= store.route.length) return;
     store.route.splice(j, 0, store.route.splice(i, 1)[0]);
+    touchRoute();
     saveStore();
     update();
     renderList();
@@ -1696,7 +1807,7 @@ function renderRoute() {
 
     let dist = 0, allGeo = bars.every(hasGeo);
     if (allGeo) for (let i = 1; i < bars.length; i++) dist += distanceKm(bars[i - 1], bars[i]);
-    $('routeDist').textContent = bars.length < 2 ? '再加幾間吧'
+    $('routeDist').textContent = bars.length < 2 ? '再加幾間吧（中午 12 點自動重設）'
         : allGeo ? `共 ${bars.length} 攤・步行約 ${dist.toFixed(1)} km`
         : `共 ${bars.length} 攤（部分店家無座標，順序未最佳化）`;
 
@@ -1980,6 +2091,8 @@ $('listBody').addEventListener('click', e => {
     }
 });
 $('exportBtn').addEventListener('click', exportBackup);
+$('syncUpBtn').addEventListener('click', syncUp);
+$('syncDownBtn').addEventListener('click', syncDown);
 $('importBtn').addEventListener('click', () => $('importFile').click());
 $('importFile').addEventListener('change', e => {
     if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
@@ -2063,12 +2176,16 @@ applyUrlState();                   // 先套用網址帶來的篩選條件
 renderCityNav();
 updateDistrictOptions();
 renderChips();
+pruneRoute();                      // 過了中午就把上一輪的路線清掉
 // 只綁篩選面板裡的控制項。先前是全頁掃描，連新增表單的 11 個輸入框都綁上了，
 // 導致在表單裡每打一個字就重繪 222 張卡片，輸入嚴重卡頓。
 document.querySelectorAll('.filter-panel select, .filter-panel input[type=text]')
     .forEach(el => el.addEventListener('input', update));
 update();
-setInterval(update, 60000);        // 每分鐘更新一次營業狀態
+setInterval(() => {
+    if (pruneRoute()) toast('已過中午 12 點，今晚路線已重設 🍸');
+    update();                      // 順便更新營業狀態
+}, 60000);
 
 // ===== PWA：離線可用 =====
 // 只有透過 http(s) 開啟才有 service worker，直接用 file:// 開檔不會註冊（瀏覽器限制）

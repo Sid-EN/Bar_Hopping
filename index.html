@@ -214,6 +214,11 @@
         .gh-status.err { color: var(--closed); }
         .gh-help { color: var(--muted); font-size: 0.75rem; line-height: 1.7; }
         .gh-help a { color: var(--gold); }
+        .sync-warn { background: rgba(217,106,106,0.12); border-left: 3px solid var(--closed);
+                     color: #e0b4b4; font-size: 0.78rem; line-height: 1.8; padding: 10px 14px;
+                     border-radius: 0 8px 8px 0; margin: 0; font-weight: normal; }
+        .sync-warn b { color: var(--closed); }
+        html[data-theme="light"] .sync-warn { color: #8a3a3a; }
         .token-row { display: flex; gap: 8px; align-items: center; }
         .token-row input { flex: 1; min-width: 0; }
         .token-row .icon-btn { flex: 0 0 34px; height: 34px; font-size: 0.9rem; }
@@ -503,7 +508,32 @@
             <button class="btn btn-ghost" id="importBtn">⬆️ 匯入備份</button>
             <input type="file" id="importFile" accept="application/json" hidden>
         </div>
-        <p class="list-note">酒單存在這台裝置的瀏覽器裡，不會上傳。換裝置或清除瀏覽器資料就會消失，建議偶爾匯出備份。</p>
+
+        <details class="gh-box">
+            <summary>☁️ 同步到 GitHub（換裝置也能接續）</summary>
+            <div class="gh-fields">
+                <p class="sync-warn">
+                    ⚠️ <b>這個 repo 是公開的。</b>同步上去之後，你的收藏、去過哪些店、
+                    自己給的評分與<b>寫在筆記裡的內容</b>，任何人都看得到，而且會永久留在 git 歷史裡。<br>
+                    只想換裝置繼續用、不想公開的話，請改用上面的「匯出／匯入備份」。
+                </p>
+                <div class="gh-actions">
+                    <button class="btn btn-ghost" id="syncUpBtn">⬆️ 上傳到 repo</button>
+                    <button class="btn btn-ghost" id="syncDownBtn">⬇️ 從 repo 取回</button>
+                    <span id="syncStatus" class="gh-status"></span>
+                </div>
+                <div class="gh-help">
+                    存成 repo 裡的 <code>my-list.json</code>，需要先設定好存取權杖（在「➕ 新增酒吧」裡）。<br>
+                    今晚路線也會一起同步，但它每天中午 12 點會自動重設。
+                </div>
+            </div>
+        </details>
+
+        <p class="list-note">
+            酒單預設只存在這台裝置的瀏覽器裡，不會上傳。<br>
+            換裝置或清除瀏覽器資料就會消失，建議偶爾匯出備份。<br>
+            今晚路線每天<b>中午 12:00</b> 自動重設（用中午當界線，跨夜跑吧才不會喝到一半清單就沒了）。
+        </p>
     </div>
 </div>
 
