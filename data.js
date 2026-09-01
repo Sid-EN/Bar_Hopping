@@ -116,7 +116,7 @@ const BARS = [
   {name: "YiYi 液藝", city: "台北市", district: "大安區", type: "特調", purpose: "一個人", lat: 25.012864, lng: 121.546711, note: "咖啡酒吧｜小眾"},
   {name: "The Fridge bar", city: "台北市", district: "信義區", type: "特調", purpose: "一個人", note: "冰箱門入口｜炸雞比酒紅"},
   {name: "晨箔", city: "台北市", district: "大安區", type: "特調", purpose: "一個人", note: "銀波二店｜拉麵必吃"},
-  {name: "Bar Between", city: "台北市", district: "大安區", type: "經典", purpose: "一個人", lat: 25.03902, lng: 121.522002, special: true, note: "日本調酒師｜台北前五名"},
+  {name: "Bar Between", city: "台北市", district: "大安區", type: "經典", purpose: "一個人", lat: 25.03902, lng: 121.522002, note: "日本調酒師｜台北前五名"},
   {name: "Bar Three Piece", city: "台北市", district: "信義區", type: "經典", purpose: "一個人", note: "日本調酒師｜精緻秀氣"},
   {name: "Liowl", city: "台北市", district: "大安區", type: "經典", purpose: "一個人", note: "有貓｜資深酒客推"},
   {name: "ACDC Taipei", city: "台北市", district: "信義區", type: "經典", purpose: "聚會", note: "室內版Fake Sober｜熱鬧"},
