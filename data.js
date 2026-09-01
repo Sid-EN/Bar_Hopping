@@ -38,7 +38,7 @@ const BARS = [
   {name: "Bar ansleep Taipei", city: "台北市", district: "中山區", type: "經典", purpose: "聚會或一個人", note: "日本調酒師回國ㄌ🥲"},
   {name: "BAR 忠", city: "台北市", district: "中山區", type: "經典", purpose: "一個人", lat: 25.043977, lng: 121.552935, note: "日本調酒師｜真材實料｜行天宮三本柱"},
   {name: "心白", city: "台北市", district: "中山區", type: "經典", purpose: "聚會", lat: 25.036971, lng: 121.567907, note: "清酒吧｜餐點好吃｜行天宮三本柱"},
-  {name: "Light House", city: "台北市", district: "中山區", type: "經典", purpose: "聚會或一個人", special: true, note: "四訪驚喜｜去就對了｜行天宮三本柱"},
+  {name: "Light House", city: "台北市", district: "中山區", type: "經典", purpose: "聚會或一個人", note: "四訪驚喜｜去就對了｜行天宮三本柱"},
   {name: "奏 ZOU Listening Bar", city: "台北市", district: "大同區", type: "經典", purpose: "聚會或一個人", note: "脆友推薦"},
   {name: "小小間酒吧", city: "台北市", district: "大同區", type: "經典", purpose: "一個人", lat: 25.048275, lng: 121.508379, note: "脆友推薦"},
   {name: "Como Tú", city: "台北市", district: "大同區", type: "經典", purpose: "一個人", note: "酒友推薦"},
