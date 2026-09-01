@@ -779,8 +779,47 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     // 權杖不該出現在原始碼裡
     const appSrc = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
     const htmlSrc = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-    t('程式碼裡沒有寫死的權杖',
-        !/gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,}/.test(appSrc + htmlSrc));
+    const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+    const TOKEN_RE = /gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{30,}/;
+    t('app.js 沒有寫死的權杖', !TOKEN_RE.test(appSrc));
+    t('index.html 沒有寫死的權杖', !TOKEN_RE.test(htmlSrc));
+    t('README 沒有貼到真實權杖', !TOKEN_RE.test(readme));
+    t('data.js 沒有權杖', !TOKEN_RE.test(fs.readFileSync(path.join(ROOT, 'data.js'), 'utf8')));
+}
+
+// ---------------------------------------------------------------- 權杖到期日顯示
+{
+    const e = boot();
+    section('權杖到期日');
+    const T = e.api;
+
+    e.click(e.$('addBtn'));
+    const el = e.$('ghExpiry');
+    t('到期日欄位存在', !!el);
+    t('顯示設定的到期日', el.textContent.includes('2027/09/01'), el.textContent);
+    t('未到期時不上警告色', !el.className.includes('soon') && !el.className.includes('expired'), el.className);
+
+    // 常數是唯一來源，README 才有地方可指
+    const appSrc = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+    const m = appSrc.match(/const GH_TOKEN_EXPIRY = '([^']*)'/);
+    t('到期日集中在單一常數', !!m, '找不到 GH_TOKEN_EXPIRY');
+    t('常數格式為 YYYY-MM-DD', /^\d{4}-\d{2}-\d{2}$/.test(m[1]), m[1]);
+    t('README 有寫到期日與修改位置',
+        fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8').includes('GH_TOKEN_EXPIRY'));
+
+    // 不同日期下的呈現
+    // 取出 expiryInfo 的原始碼，換上不同的到期日再跑一次
+    const fnSrc = appSrc.slice(appSrc.indexOf('function expiryInfo'), appSrc.indexOf('function loadGh'));
+    const mk = date => new Function(
+        `const GH_TOKEN_EXPIRY = ${JSON.stringify(date)};\n${fnSrc}\nreturn expiryInfo;`)();
+    const far = mk('2099-01-01')();
+    t('遠期顯示「有效期至」', far.text.includes('有效期至') && far.cls === '');
+    const soon = mk(new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10))();
+    t('30 天內轉為提醒', soon.cls === 'soon' && soon.text.includes('剩'), JSON.stringify(soon));
+    const past = mk('2020-01-01')();
+    t('已過期標為 expired', past.cls === 'expired' && past.text.includes('請更換'), JSON.stringify(past));
+    const none = mk('')();
+    t('設空字串則不顯示', none === null);
 }
 
 console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');

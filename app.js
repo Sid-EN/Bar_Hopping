@@ -915,6 +915,22 @@ async function copyDataJs() {
 const GH_KEY = 'barbible.gh';
 const GH_DEFAULT_REPO = 'Sid-EN/Bar_Hopping';
 
+// 目前使用中的權杖有效期限。換新權杖時記得一併改這裡（格式 YYYY-MM-DD），
+// 到期前 30 天畫面上會轉為警告色提醒。設成空字串就不顯示。
+const GH_TOKEN_EXPIRY = '2027-09-01';
+
+// 依到期日產生提示文字與狀態
+function expiryInfo() {
+    if (!GH_TOKEN_EXPIRY) return null;
+    const due = new Date(GH_TOKEN_EXPIRY + 'T23:59:59');
+    if (isNaN(due)) return null;
+    const days = Math.ceil((due - Date.now()) / 86400000);
+    const shown = GH_TOKEN_EXPIRY.replace(/-/g, '/');
+    if (days < 0) return { text: `（已於 ${shown} 到期，請更換）`, cls: 'expired' };
+    if (days <= 30) return { text: `（${shown} 到期，剩 ${days} 天）`, cls: 'soon' };
+    return { text: `（有效期至 ${shown}）`, cls: '' };
+}
+
 function loadGh() {
     try {
         const g = JSON.parse(localStorage.getItem(GH_KEY) || '{}');
@@ -1193,6 +1209,13 @@ function saveGhFromForm() {
 function fillGhForm() {
     const g = loadGh();
     $('ghRepo').value = g.repo;
+
+    const exp = expiryInfo();
+    const el = $('ghExpiry');
+    if (el) {
+        el.textContent = exp ? exp.text : '';
+        el.className = 'gh-expiry' + (exp && exp.cls ? ' ' + exp.cls : '');
+    }
     // 不把權杖原文放回畫面上，避免被旁邊的人看到或被其他腳本讀走
     $('ghToken').value = g.token ? MASK : '';
     $('ghTokenHint').textContent = g.token

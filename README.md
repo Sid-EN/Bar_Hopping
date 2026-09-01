@@ -1,10 +1,16 @@
 # 🍸 TAIWAN BAR BIBLE — 台灣微醺指南
 
-全台 222 間知名酒吧的查找指南，涵蓋 20 個縣市。純靜態網頁，開檔就能用。
+全台 222 間知名酒吧的查找指南，涵蓋 20 個縣市。
+
+**線上版：https://sid-en.github.io/Bar_Hopping/**
+
+沒有後端、沒有資料庫，就是一份 HTML + JS + 一個資料檔。
+但透過 GitHub API，網頁上的新增與編輯會直接寫回 repo 的 `data.js`，所以它不只是唯讀的靜態頁。
 
 ## 使用
 
-直接用瀏覽器開 `index.html` 即可，不需要任何安裝或伺服器。
+開上面的網址即可。也可以 clone 下來直接用瀏覽器開 `index.html`
+（本機開檔時 PWA 離線功能不會啟用，其餘功能都正常）。
 
 ## 功能
 
@@ -44,13 +50,25 @@
 
 ```
 index.html      畫面骨架與樣式
-app.js          應用邏輯（篩選、排序、地圖、路線、酒單、營業時間解析）
-data.js         酒吧資料庫 ← 要新增酒吧就改這裡
+app.js          應用邏輯（篩選、排序、地圖、路線、酒單、營業時間解析、寫回 repo）
+data.js         酒吧資料庫 ← 正式資料都在這，網頁上的新增/編輯最後也是寫進這個檔
 manifest.json   PWA 設定
 sw.js           Service Worker（離線快取）
 icons/          應用程式圖示
+tests/          測試（npm test）
 tools/          資料維護工具（見下）
 ```
+
+`app.js` 開頭有幾個可以直接調整的常數：
+
+| 常數 | 用途 |
+|---|---|
+| `GH_DEFAULT_REPO` | 預設要寫回哪個 repo |
+| `GH_TOKEN_EXPIRY` | 畫面上顯示的權杖到期日，換權杖時要一起改 |
+| `MAX_ROUTE` | 今晚路線最多幾攤（目前 8） |
+| `STAY_MINUTES` / `WALK_KMH` | 路線時間推算用的每攤停留時間與步行速度 |
+
+`data.js` 開頭的 `PRICE_TIERS` 則是價位級距對應的實際金額。
 
 > 酒吧資料一律存在 repo 的 `data.js`，是所有人共用的正式資料。
 > 只有**收藏、打卡、個人筆記、今晚路線**存在瀏覽器的 localStorage，不會上傳。
@@ -67,33 +85,7 @@ tools/          資料維護工具（見下）
 
 編輯模式下還有「🗑️ 從 repo 刪除」，會把那一行從 `data.js` 移除。
 
-需要先在表單下方的「⚙️ GitHub 設定」填入存取權杖：
-
-1. GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens**
-2. Generate new token，**Repository access 只選這一個 repo**
-3. Permissions 只開 **Contents: Read and write**，有效期建議設短一點
-4. 貼進表單，按「儲存設定」，可以先按「測試連線」確認
-
-設定一次就好，之後表單會顯示「✓ 已連線」並自動收合，直接按「寫回 repo」即可。
-欄位不會回填權杖原文，只顯示遮蔽字元與末四碼。
-
-**防止重複新增**（多人共用時特別重要）：
-- 店名比對會忽略大小寫、空白與標點，「Bar Weekend」「BAR  Weekend」「Bar-Weekend」視為同一間
-- 送出前會重新抓一次 repo 上的最新 `data.js` 再檢查，
-  所以別人在你開啟頁面之後新增的店也擋得到
-- 真的重複時會跳出確認，讓你選擇覆蓋或取消，不會默默產生兩筆
-- 寫入時同名同縣市一律**取代**該行，不會新增第二行
-- `npm run validate` 與 CI 也會用同一套規則把關
-
-- 若剛好有人同時改了 `data.js`（sha 衝突），會自動重抓最新版再試一次
-- 換縣市的編輯會先刪掉舊行，再插進新縣市的段落
-
-> ⚠️ **權杖是明文存在這台瀏覽器的 localStorage**，能操作這台電腦的人就拿得到。
-> 共用電腦請不要儲存，用完按「清除權杖」。權限只給 Contents 就好。
->
-> **絕對不要把權杖寫進 `app.js` 或任何原始碼**。這個網站是公開的，
-> `app.js` 任何人都能直接下載，等於把可寫入 repo 的鑰匙公開。
-> 測試會自動檢查原始碼裡沒有形似權杖的字串。
+第一次使用要先設定連線，之後就不用再碰了 → [存取權杖設定](#存取權杖personal-access-token)。
 
 ### 📋 複製 data.js 格式
 
@@ -123,11 +115,96 @@ tools/          資料維護工具（見下）
 | `special` | `true` 會掛上「⭐ 私心推薦」 |
 | `status` | `"CLOSED_PERMANENTLY"` 會標成已歇業並灰化 |
 
+## 重複資料怎麼防
+
+多人共用或自己重複送出時，有四道防線：
+
+- 店名比對會**正規化**（忽略大小寫、空白與標點），
+  「Bar Weekend」「BAR  Weekend」「Bar-Weekend」視為同一間
+- 送出前會**重新抓一次 repo 上最新的 `data.js`** 再檢查，
+  所以別人在你開啟頁面之後新增的店也擋得到
+- 真的重複時會跳出確認，讓你選擇覆蓋或取消，不會默默產生兩筆
+- 寫入時同名同縣市一律**取代**該行，不會新增第二行
+
+`npm run validate` 與 CI 也會用同一套規則把關。
+
+其他寫入行為：
+- 若剛好有人同時改了 `data.js`（sha 衝突），會自動重抓最新版再試一次
+- 編輯時把縣市改掉的話，會先刪掉舊行再插進新縣市的段落
+- 改名時，你本機的收藏、打卡、筆記、路線會跟著搬到新名字
+
+---
+
+## 存取權杖（Personal Access Token）
+
+「寫回 repo」是靠 GitHub 的 Contents API 完成的，所以需要一把有寫入權限的權杖。
+目前使用中的權杖 **有效期至 2027/09/01**。
+
+### 產生一把新的權杖
+
+1. GitHub → 右上角頭像 → **Settings**
+2. 左側最下方 **Developer settings**
+3. **Personal access tokens → Fine-grained tokens**
+4. 按 **Generate new token**，然後：
+
+   | 設定項目 | 要選什麼 |
+   |---|---|
+   | Token name | 隨便取，例如 `bar-bible-web` |
+   | Expiration | 自己決定（目前這把設一年） |
+   | Repository access | **Only select repositories** → 只勾 `Bar_Hopping` |
+   | Permissions → Repository permissions | 只把 **Contents** 設為 **Read and write**，其餘全部保持 No access |
+
+5. 按 Generate token，**複製顯示出來的那串**（離開頁面後就再也看不到了）
+
+> 只給 Contents 權限是刻意的。權杖萬一外流，對方最多只能改這一個 repo 的檔案，
+> 動不到你其他 repo，也改不了帳號設定。
+
+### 填進網站
+
+1. 打開網站 → 右上角 **➕ 新增酒吧**
+2. 展開表單下方的 **⚙️ 連線設定**
+3. Repository 保持 `Sid-EN/Bar_Hopping`，把權杖貼進「存取權杖」欄位
+4. 按 **儲存設定**，再按 **測試連線** 確認顯示「連線正常」
+
+設定一次就好。之後這個區塊會自動收合並顯示「✓ 已連線」，直接按「🚀 儲存並寫回 repo」即可。
+欄位不會回填權杖原文，只會顯示遮蔽字元與末四碼供辨認。
+
+### 更換或撤銷權杖
+
+- **更換**：直接在同一個欄位貼上新的權杖，按「儲存設定」即可覆蓋
+- **從這台電腦移除**：按「清除權杖」（只清瀏覽器，GitHub 上那把還有效）
+- **真正撤銷**：到 GitHub 的 Fine-grained tokens 頁面把它 **Delete**。
+  權杖一旦外流（貼到聊天室、截圖、commit 進程式碼）就一定要走這步，光清瀏覽器沒有用
+
+### 換權杖後要順手改的地方
+
+畫面上顯示的到期日寫在 [`app.js`](app.js) 最上方的常數，換權杖時記得一起更新：
+
+```js
+// app.js
+const GH_TOKEN_EXPIRY = '2027-09-01';   // 改成新權杖的到期日，格式 YYYY-MM-DD
+```
+
+到期前 30 天，畫面上的日期會轉成警告色；過期後會變紅字提醒更換。
+不想顯示到期日就設成空字串 `''`。
+
+### 安全須知
+
+> ⚠️ 權杖以**明文存在瀏覽器的 localStorage**。能操作這台電腦的人就拿得到，
+> 所以共用或公用電腦請不要儲存，用完按「清除權杖」。
+>
+> ⚠️ **絕對不要把權杖寫進 `app.js`、`index.html` 或任何原始碼。**
+> 這個網站是公開的，任何人都能直接下載 `app.js` 讀到內容；
+> 而且 commit 進 git 之後會永久留在歷史裡，刪掉也追不回來。
+> 實務上 GitHub 的 secret scanning 也會偵測到並自動撤銷。
+> `npm test` 會掃描原始碼有沒有形似權杖的字串，防止不小心寫死。
+
+
 ## 開發
 
 ```bash
 npm install     # 只有測試需要 jsdom
-npm test        # 資料校驗 + 功能測試 + PWA 檢查（共 259 項）
+npm test        # 資料校驗 + 功能測試 + PWA 檢查（共 272 項）
 npm run validate  # 只跑資料校驗，不需要任何套件
 ```
 

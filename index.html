@@ -213,8 +213,10 @@
         .gh-status.ok { color: var(--open); }
         .gh-status.err { color: var(--closed); }
         .gh-help { color: var(--muted); font-size: 0.75rem; line-height: 1.7; }
-        .gh-help b { color: #bbb; }
-        .gh-warn { color: var(--gold) !important; }
+        .gh-help a { color: var(--gold); }
+        .gh-expiry { font-weight: normal; font-size: 0.75rem; color: var(--muted); margin-left: 6px; }
+        .gh-expiry.soon { color: var(--gold); }
+        .gh-expiry.expired { color: var(--closed); }
         html[data-theme="light"] .gh-fields input { background: #fff; border-color: #cfc7b2; }
 
         /* 縣市分區頁籤 */
@@ -600,14 +602,15 @@
         </form>
 
         <details class="gh-box" id="ghBox">
-            <summary>⚙️ GitHub 設定（要「寫回 repo」才需要）</summary>
+            <summary>⚙️ 連線設定（第一次使用才需要）</summary>
             <div class="gh-fields">
                 <label><span class="f-title">Repository</span>
                     <input type="text" id="ghRepo" placeholder="Sid-EN/Bar_Hopping" autocomplete="off">
                 </label>
-                <label><span class="f-title">存取權杖</span>
+                <label>
+                    <span class="f-title">存取權杖 <span class="gh-expiry" id="ghExpiry"></span></span>
                     <input type="password" id="ghToken" placeholder="github_pat_..." autocomplete="off">
-                    <span class="f-hint" id="ghTokenHint">貼上後按「儲存設定」。之後這裡只會顯示遮蔽後的樣子，不會再顯示完整內容。</span>
+                    <span class="f-hint" id="ghTokenHint">貼上後按「儲存設定」。之後只會顯示遮蔽後的樣子。</span>
                 </label>
                 <div class="gh-actions">
                     <button type="button" class="btn btn-ghost" id="ghSave">儲存設定</button>
@@ -616,20 +619,16 @@
                     <span id="ghStatus" class="gh-status"></span>
                 </div>
                 <div class="gh-help">
-                    <b>怎麼取得：</b>GitHub → Settings → Developer settings →
-                    Personal access tokens → <b>Fine-grained tokens</b> → Generate new token<br>
-                    Repository access 只選這一個 repo，Permissions 只開 <b>Contents: Read and write</b>。<br>
-                    <b class="gh-warn">⚠️ 權杖以明文存在這台瀏覽器的 localStorage，
-                    能操作這台電腦的人就拿得到。共用電腦請勿儲存，用完按「清除權杖」。
-                    絕對不要把權杖寫進程式碼——這個網站是公開的，等於直接把它公布出去。</b>
+                    權杖只存在這台瀏覽器，不會上傳。共用電腦請勿儲存，用完按「清除權杖」。<br>
+                    <a href="https://github.com/Sid-EN/Bar_Hopping#-儲存並寫回-repo" target="_blank" rel="noopener">
+                        如何產生或更換權杖 →</a>
                 </div>
             </div>
         </details>
 
         <p class="list-note">
-            <b>💾 儲存到這台裝置</b>：只有你看得到，清除瀏覽器資料就會消失，適合先隨手記下來。<br>
-            <b>🚀 寫回 repo</b>：直接 commit 進 <code>data.js</code>，推上去後所有人都看得到。<br>
-            <b>📋 複製 data.js 格式</b>：不想做上面的設定的話，複製那一行自己貼進 <code>data.js</code> 也一樣。
+            填好按「🚀 儲存並寫回 repo」，所有人都會看到這筆資料（網站約一分鐘後更新）。<br>
+            沒有連線設定的話，用「📋 複製 data.js 格式」把內容複製下來給管理者也可以。
         </p>
     </div>
 </div>
