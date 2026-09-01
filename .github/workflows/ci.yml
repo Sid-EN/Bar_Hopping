@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安裝相依套件
+        run: npm install --no-audit --no-fund
+
+      - name: 語法檢查
+        run: |
+          for f in app.js data.js sw.js tools/*.js tests/*.js; do
+            node --check "$f" || exit 1
+          done
+          node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"
+          echo "語法全部通過"
+
+      - name: 資料校驗
+        run: node tests/validate-data.js
+
+      - name: 功能測試
+        run: node tests/app.test.js
+
+      - name: PWA 檢查
+        run: node tests/pwa.test.js

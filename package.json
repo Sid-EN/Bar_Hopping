@@ -1,0 +1,16 @@
+{
+  "name": "taiwan-bar-bible",
+  "version": "1.0.0",
+  "description": "全台知名酒吧查找指南",
+  "private": true,
+  "scripts": {
+    "test": "node tests/validate-data.js && node tests/app.test.js && node tests/pwa.test.js",
+    "validate": "node tests/validate-data.js",
+    "missing": "node tools/report_missing.js",
+    "geocode": "node tools/geocode.js",
+    "enrich": "node tools/enrich.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
