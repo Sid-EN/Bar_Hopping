@@ -139,6 +139,7 @@ const BARS = [
   {name: "無 Wu (Nothingness)", city: "台北市", district: "信義區", type: "經典", purpose: "一個人", style: "無菜單經典調酒、極簡吧檯", price: 2, address: "台北市信義區光復南路419-1號1樓", hours: "19:00–01:00（低消600、僅收現金、不訂位）", lat: 25.031361, lng: 121.557478, awards: ["Asia's 50 Best Bars 2025 #66"], note: "World Class 亞太冠軍尹德凱的經典調酒吧，只做經典不走花俏，以台灣烈酒與食材重新詮釋老酒譜。"},
   {name: "AHA Saloon", city: "台北市", district: "大安區", type: "特調", purpose: "聚會或一個人", style: "美式沙龍、創意雞尾酒", price: 2, address: "台北市大安區復興南路二段138號", phone: "02-2706-5206", hours: "20:00–02:00（週一休，當日18:30後電話預約）", lat: 25.030852, lng: 121.543492, awards: ["Asia's 50 Best Bars 2021 #10"], note: "台北指標性創意調酒吧，曾登上亞洲50大酒吧前十名，以概念式酒單與高完成度特調著稱。"},
   {name: "MAD:MEN 面麵酒屋", city: "台北市", district: "大安區", type: "特調", purpose: "聚會", style: "摩登居酒屋、麵配調酒", price: 2, address: "台北市大安區和平東路三段68號1樓", hours: "18:00–02:00（週二休，低消500）", lat: 25.01091, lng: 121.563963, awards: ["2025 Spirited Awards 亞太區十強"], note: "Le Kief 創辦人打造的深夜摩登居酒屋，以自製中華麵、精緻下酒菜搭配調酒，獲調酒界奧斯卡亞太區十強肯定。"},
+  {name: "Fake Sober", city: "台北市", district: "信義區", type: "特調", purpose: "聚會或一個人", style: "現代潮流", price: 1, budget: "400-800", address: "台北市信義區西村里松壽路20號", phone: "0227220723", hours: "周一至周日 08:00-02:00", lat: 25.035231307831122, lng: 121.5674497306974, rating: 4.5, ratingCount: 1001, special: true, note: "日咖夜酒、現代潮流、氛圍熱鬧、各類音樂風格 (華語金曲、Kpop、懷舊、熱榜)。"},
 
   // ───── 新北市 ─────
   {name: "多崎作 — The Ferrymen", city: "新北市", district: "淡水區", type: "特調", purpose: "聚會或一個人", note: "淡水人推薦｜便宜"},
