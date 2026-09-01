@@ -25,6 +25,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     window.alert = m => { window.__alert = m; };
     window.prompt = (a, b) => b;
     window.confirm = () => window.__confirm !== false;
+    // jsdom 沒有在 window 上提供 TextEncoder/TextDecoder，但所有瀏覽器都有，
+    // 這裡補上 Node 的實作，讓 base64 編解碼跑得起來
+    if (!window.TextEncoder) window.TextEncoder = TextEncoder;
+    if (!window.TextDecoder) window.TextDecoder = TextDecoder;
+    if (!window.btoa) window.btoa = s => Buffer.from(s, 'binary').toString('base64');
+    if (!window.atob) window.atob = s => Buffer.from(s, 'base64').toString('binary');
     window.matchMedia = window.matchMedia || (q => ({ matches: false, addListener() {}, removeListener() {} }));
 
     // 定位替身：預設回傳台北車站附近

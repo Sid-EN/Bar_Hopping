@@ -14,7 +14,8 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          # jsdom 30 需要 Node >= 22.22.2；也跟本機開發環境保持一致
+          node-version: '22'
 
       - name: 安裝相依套件
         run: npm install --no-audit --no-fund

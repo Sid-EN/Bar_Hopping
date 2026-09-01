@@ -10,7 +10,10 @@
     "geocode": "node tools/geocode.js",
     "enrich": "node tools/enrich.js"
   },
+  "engines": {
+    "node": ">=22.22.2"
+  },
   "devDependencies": {
-    "jsdom": "^24.0.0"
+    "jsdom": "^30.0.0"
   }
 }
