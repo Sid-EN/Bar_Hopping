@@ -27,7 +27,15 @@ const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
 const FROM_CACHE = args.includes('--from-cache');
 const REFRESH = args.includes('--refresh');
-const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+// 金鑰來源：環境變數，或 tools/.api_key 檔案（已列入 .gitignore，不會被提交）
+const KEY_FILE = path.join(__dirname, '.api_key');
+const API_KEY = process.env.GOOGLE_MAPS_API_KEY ||
+  (fs.existsSync(KEY_FILE) ? fs.readFileSync(KEY_FILE, 'utf8').trim() : '');
+
+// 硬性上限：這個專案只有 222 間店，正常情況一間最多查一次。
+// 設定上限後，就算程式哪裡寫錯進了迴圈，也不可能把免費額度打爆。
+const MAX_REQUESTS = 260;
+let requestCount = 0;
 
 const ENDPOINT = 'https://places.googleapis.com/v1/places:searchText';
 const FIELDS = [
@@ -51,6 +59,9 @@ function loadData() {
 
 // ---------- 呼叫 Places API ----------
 async function searchPlace(bar) {
+  if (++requestCount > MAX_REQUESTS) {
+    throw new Error(`已達安全上限 ${MAX_REQUESTS} 次查詢，主動中止以免超出免費額度`);
+  }
   const textQuery = `${bar.name} ${bar.city}${bar.district || ''} 酒吧`;
   const res = await fetch(ENDPOINT, {
     method: 'POST',
@@ -126,10 +137,15 @@ function writeDataJs(src, bars) {
 
   if (!FROM_CACHE) {
     if (!API_KEY) {
-      console.error('缺少 API 金鑰。請先設定：export GOOGLE_MAPS_API_KEY=你的key');
-      console.error('（或用 node tools/enrich.js --from-cache 以既有快取重建 data.js）');
+      console.error('缺少 API 金鑰，請擇一設定：');
+      console.error('  1) echo "你的金鑰" > tools/.api_key      （檔案已被 .gitignore 排除）');
+      console.error('  2) export GOOGLE_MAPS_API_KEY=你的金鑰');
+      console.error('或用 node tools/enrich.js --from-cache 以既有快取重建 data.js（不需金鑰）');
       process.exit(1);
     }
+    const todo = BARS.filter(b => cache[`${b.name}|${b.city}`] === undefined || REFRESH).length;
+    console.log(`本次預計查詢 ${todo} 間（其餘取自快取），安全上限 ${MAX_REQUESTS} 次。`);
+    if (todo > MAX_REQUESTS) { console.error('超過安全上限，已中止。'); process.exit(1); }
     let done = 0, hit = 0, miss = 0;
     for (const bar of BARS) {
       const key = `${bar.name}|${bar.city}`;
@@ -147,7 +163,7 @@ function writeDataJs(src, bars) {
       fs.writeFileSync(CACHE, JSON.stringify(cache, null, 2));   // 邊抓邊存，中斷也不會白跑
       await new Promise(r => setTimeout(r, 120));                 // 放慢一點，避免觸發速率限制
     }
-    console.log(`\n查詢完成：命中 ${hit}、查無 ${miss}`);
+    console.log(`\n查詢完成：命中 ${hit}、查無 ${miss}，實際送出 ${requestCount} 次 API 查詢`);
   }
 
   // 合併 + 產生報告

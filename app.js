@@ -12,6 +12,28 @@ const REGIONS = [
 ];
 const MAX_ROUTE = 8;                       // 一晚最多排幾攤
 
+// 酒類標籤：可複選，符合其中任一種即列入
+const TYPE_TAGS = [
+    { id: '經典', label: '經典調酒' },
+    { id: '特調', label: '創意特調' },
+    { id: '啤酒', label: '啤酒' }
+];
+
+// 亮點標籤：可複選，必須全部符合（用來逐步收斂）
+const TRAIT_TAGS = [
+    { id: 'award',   label: '🏆 獲獎名店', test: b => hasAward(b) },
+    { id: 'special', label: '⭐ 私心推薦', test: b => !!b.special },
+    { id: 'friend',  label: '🧡 脆友推薦', test: b => isFriend(b) },
+    { id: 'jp',      label: '🇯🇵 日本調酒師', test: b => (b.note || '').includes('日本調酒師') },
+    { id: 'tea',     label: '🍵 茶酒', test: b => (b.note || '').includes('茶') || (b.style || '').includes('茶') },
+    { id: 'daytime', label: '🕐 下午開喝', test: b => (b.note || '').includes('下午') || opensBefore(b, 17 * 60) },
+    { id: 'cheap',   label: '💸 高 CP 值', test: b => b.price === 1 || (b.note || '').includes('便宜') },
+    { id: 'late',    label: '🌃 營業到 3 點後', test: b => closesAfter(b, 27 * 60) }
+];
+
+let selectedTypes = new Set();
+let selectedTraits = new Set();
+
 // ===== 營業時間解析 =====
 // 把中文營業時間字串解析成每週七天的時段。解析不出來一律回 null（顯示「時間未知」），
 // 寧可不判斷，也不要誤報「還在營業」害人白跑一趟。
@@ -120,6 +142,20 @@ function openPill(bar, now) {
     return '<span class="open-pill closed">🔴 今日已打烊</span>';
 }
 
+// 有沒有任何一天在指定時間之前就開門
+function opensBefore(bar, mins) {
+    const p = parseHours(bar.hours);
+    if (!p) return false;
+    return Object.values(p.schedule).some(s => s.open <= mins);
+}
+
+// 有沒有任何一天營業到指定時間之後（跨夜以 24:00 之後的分鐘數計算，例如凌晨 3 點 = 27*60）
+function closesAfter(bar, mins) {
+    const p = parseHours(bar.hours);
+    if (!p) return false;
+    return Object.values(p.schedule).some(s => s.close >= mins);
+}
+
 // ===== 收藏、打卡、路線（存在瀏覽器本機）=====
 const STORE_KEY = 'barbible.v1';
 const barKey = b => `${b.name}|${b.city}`;
@@ -206,6 +242,7 @@ function selectCity(city) {
     currentCity = city;
     renderCityNav();
     updateDistrictOptions();
+    renderChips();
     update();
 }
 
@@ -214,6 +251,29 @@ function updateDistrictOptions() {
     const districts = [...new Set(pool.map(b => b.district).filter(Boolean))];
     districtSelect.innerHTML = '<option value="all">所有行政區</option>' +
         districts.map(d => `<option value="${d}">${d}</option>`).join('');
+}
+
+// ===== 多選標籤 =====
+// 每個標籤都標上「在目前縣市範圍內符合的間數」，避免點了才發現是空的
+function renderChips() {
+    const pool = currentCity === 'all' ? BARS : BARS.filter(b => b.city === currentCity);
+    $('typeChips').innerHTML = TYPE_TAGS.map(t => {
+        const n = pool.filter(b => (b.type || '').includes(t.id)).length;
+        return `<button class="chip ${selectedTypes.has(t.id) ? 'on' : ''}" data-chip="type" data-id="${t.id}"` +
+               `${n ? '' : ' disabled style="opacity:.35;cursor:default"'}>${t.label}<span class="n">${n}</span></button>`;
+    }).join('');
+    $('traitChips').innerHTML = TRAIT_TAGS.map(t => {
+        const n = pool.filter(t.test).length;
+        return `<button class="chip ${selectedTraits.has(t.id) ? 'on' : ''}" data-chip="trait" data-id="${t.id}"` +
+               `${n ? '' : ' disabled style="opacity:.35;cursor:default"'}>${t.label}<span class="n">${n}</span></button>`;
+    }).join('');
+}
+
+function toggleChip(kind, id) {
+    const set = kind === 'type' ? selectedTypes : selectedTraits;
+    set.has(id) ? set.delete(id) : set.add(id);
+    renderChips();
+    update();
 }
 
 // ===== 排序 =====
@@ -361,15 +421,118 @@ function handleAction(act, key, n) {
     } else if (act === 'unrate') {
         if (store.visited[key]) store.visited[key].rating = 0;
     } else return false;
+    if (act === 'route' || act === 'want' || act === 'visited') {
+        if (!$('listOverlay').hidden) setTimeout(renderList, 0);   // 酒單開著就順便刷新
+    }
     saveStore();
     return true;
 }
 
+// ===== 我的酒單（收藏 / 已攻略 / 今晚路線）=====
+let listTab = 'want';
+
+function listBars(tab) {
+    if (tab === 'route') return store.route.map(k => byKey[k]).filter(Boolean);
+    const src = tab === 'want' ? store.want : store.visited;
+    return Object.keys(src).map(k => byKey[k]).filter(Boolean);
+}
+
+function renderList() {
+    $('cntWant').textContent = Object.keys(store.want).length;
+    $('cntVisited').textContent = Object.keys(store.visited).length;
+    $('cntRoute').textContent = store.route.length;
+    document.querySelectorAll('.list-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === listTab));
+
+    const bars = listBars(listTab);
+    if (!bars.length) {
+        const msg = { want: '還沒有收藏任何酒吧。在卡片上點 🤍 就會加進來。',
+                      visited: '還沒有標記喝過的店。在卡片上點 ✓ 就會記錄下來。',
+                      route: '今晚路線是空的。在卡片上點 🍺 加入想跑的店。' }[listTab];
+        $('listBody').innerHTML = `<div class="list-empty">${msg}</div>`;
+        return;
+    }
+
+    $('listBody').innerHTML = bars.map((b, i) => {
+        const k = esc(barKey(b));
+        const meta = [b.city + (b.district ? ' ' + b.district : ''), b.type,
+                      myRating(b) ? '我的評分 ' + '★'.repeat(myRating(b)) : ''].filter(Boolean).join('｜');
+        const actions = listTab === 'route'
+            ? `<button class="mini-btn" data-list="up" data-key="${k}" ${i === 0 ? 'disabled' : ''} title="往前一攤">↑</button>
+               <button class="mini-btn" data-list="down" data-key="${k}" ${i === bars.length - 1 ? 'disabled' : ''} title="往後一攤">↓</button>
+               <button class="mini-btn danger" data-list="remove" data-key="${k}" title="移出路線">✕</button>`
+            : `<button class="mini-btn danger" data-list="remove" data-key="${k}" title="${listTab === 'want' ? '取消收藏' : '取消已攻略'}">✕</button>`;
+        return `<div class="list-item">
+            <span class="list-seq">${listTab === 'route' ? i + 1 : '·'}</span>
+            <div class="list-main" data-list="open" data-key="${k}">
+                <div class="list-name">${esc(b.name)}</div>
+                <div class="list-meta">${esc(meta)}</div>
+            </div>
+            <div class="list-actions">${actions}</div>
+        </div>`;
+    }).join('');
+}
+
+function openList(tab) {
+    if (tab) listTab = tab;
+    renderList();
+    $('listOverlay').hidden = false;
+    document.body.style.overflow = 'hidden';
+    $('listClose').focus();
+}
+function closeList() {
+    $('listOverlay').hidden = true;
+    document.body.style.overflow = '';
+}
+
+// 匯出 / 匯入備份，避免清瀏覽器資料就全部消失
+function exportBackup() {
+    const data = JSON.stringify({ ...store, _exportedAt: new Date().toISOString() }, null, 2);
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bar-bible-備份-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('已匯出備份檔');
+}
+
+function importBackup(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const d = JSON.parse(reader.result);
+            if (!d || typeof d !== 'object') throw new Error('格式不對');
+            store.want = d.want && typeof d.want === 'object' ? d.want : {};
+            store.visited = d.visited && typeof d.visited === 'object' ? d.visited : {};
+            store.route = Array.isArray(d.route) ? d.route.filter(k => byKey[k]) : [];
+            saveStore(); renderList(); update();
+            toast('備份已匯入');
+        } catch (e) { toast('匯入失敗：檔案格式不正確'); }
+    };
+    reader.readAsText(file);
+}
+
+let toastTimer = null;
+function toast(msg) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 2200);
+}
+
 // ===== 今晚路線 =====
-// 有座標就用最近鄰排序（從第一間出發，每次挑最近的下一間），沒座標就維持加入順序。
+// store.route 的順序就是實際順序，使用者可以自己調。
+// 「自動排序」按鈕才會套用最近鄰演算法把順序重排一次。
 function orderedRoute() {
-    const bars = store.route.map(k => byKey[k]).filter(Boolean);
-    if (bars.length < 3 || !bars.every(hasGeo)) return bars;
+    return store.route.map(k => byKey[k]).filter(Boolean);
+}
+
+// 最近鄰：從第一間出發，每次挑距離最近的下一間
+function autoSortRoute() {
+    const bars = orderedRoute();
+    if (bars.length < 3) { toast('至少 3 攤才需要排順序'); return; }
+    if (!bars.every(hasGeo)) { toast('有店家還沒有座標，無法自動排序'); return; }
     const rest = bars.slice(1), path = [bars[0]];
     while (rest.length) {
         const last = path[path.length - 1];
@@ -377,7 +540,22 @@ function orderedRoute() {
         rest.forEach((b, i) => { const d = distanceKm(last, b); if (d < bd) { bd = d; bi = i; } });
         path.push(rest.splice(bi, 1)[0]);
     }
-    return path;
+    store.route = path.map(barKey);
+    saveStore();
+    update();
+    if (!$('listOverlay').hidden) renderList();
+    toast('已依地理位置排出最順的順序');
+}
+
+// 手動移動某一攤的位置
+function moveInRoute(key, delta) {
+    const i = store.route.indexOf(key);
+    const j = i + delta;
+    if (i < 0 || j < 0 || j >= store.route.length) return;
+    store.route.splice(j, 0, store.route.splice(i, 1)[0]);
+    saveStore();
+    update();
+    renderList();
 }
 
 function renderRoute() {
@@ -386,9 +564,13 @@ function renderRoute() {
     if (!bars.length) { bar.hidden = true; return; }
     bar.hidden = false;
 
-    $('routeChips').innerHTML = bars.map((b, i) =>
-        `<span class="route-chip"><span class="seq">${i + 1}</span>${esc(b.name)}` +
-        `<button data-act="route" data-key="${esc(barKey(b))}" title="移除" aria-label="移除">&times;</button></span>`).join('');
+    $('routeChips').innerHTML = bars.map((b, i) => {
+        const k = esc(barKey(b));
+        return `<span class="route-chip"><span class="seq">${i + 1}</span>${esc(b.name)}` +
+            `<button data-act="move" data-key="${k}" data-d="-1" title="往前一攤" aria-label="往前"${i === 0 ? ' disabled style="opacity:.3"' : ''}>‹</button>` +
+            `<button data-act="move" data-key="${k}" data-d="1" title="往後一攤" aria-label="往後"${i === bars.length - 1 ? ' disabled style="opacity:.3"' : ''}>›</button>` +
+            `<button data-act="route" data-key="${k}" title="移除" aria-label="移除">&times;</button></span>`;
+    }).join('');
 
     let dist = 0, allGeo = bars.every(hasGeo);
     if (allGeo) for (let i = 1; i < bars.length; i++) dist += distanceKm(bars[i - 1], bars[i]);
@@ -410,6 +592,48 @@ function renderRoute() {
     }
 }
 
+// ===== 網址分享 =====
+// 把目前的篩選條件編碼進網址，貼給別人就會看到一樣的清單
+function stateToUrl() {
+    const p = new URLSearchParams();
+    if (currentCity !== 'all') p.set('city', currentCity);
+    const put = (id, key) => { const v = $(id).value; if (v && v !== 'all') p.set(key, v); };
+    put('districtFilter', 'dist'); put('purposeFilter', 'purpose');
+    put('priceFilter', 'price'); put('stateFilter', 'state'); put('sortFilter', 'sort');
+    if (selectedTypes.size) p.set('types', [...selectedTypes].join(','));
+    if (selectedTraits.size) p.set('traits', [...selectedTraits].join(','));
+    const q = $('searchInput').value.trim();
+    if (q) p.set('q', q);
+    if (currentView !== 'list') p.set('view', currentView);
+    const s = p.toString();
+    return location.origin + location.pathname + (s ? '?' + s : '');
+}
+
+function applyUrlState() {
+    const p = new URLSearchParams(location.search);
+    if (!p.toString()) return;
+    if (p.get('city')) currentCity = p.get('city');
+    updateDistrictOptions();
+    const set = (id, key) => { const v = p.get(key); if (v !== null) $(id).value = v; };
+    set('districtFilter', 'dist'); set('purposeFilter', 'purpose');
+    set('priceFilter', 'price'); set('stateFilter', 'state'); set('sortFilter', 'sort');
+    if (p.get('types')) selectedTypes = new Set(p.get('types').split(',').filter(Boolean));
+    if (p.get('traits')) selectedTraits = new Set(p.get('traits').split(',').filter(Boolean));
+    if (p.get('q')) $('searchInput').value = p.get('q');
+    if (p.get('view') === 'map') setView('map');
+}
+
+async function share() {
+    const url = stateToUrl();
+    try {
+        await navigator.clipboard.writeText(url);
+        toast('連結已複製，可以貼給酒友了 🍻');
+    } catch (e) {
+        // 沒有剪貼簿權限（或非 HTTPS）時，退而求其次讓使用者自己複製
+        window.prompt('複製這段連結分享給酒友：', url);
+    }
+}
+
 // ===== 地圖模式 =====
 let map = null, markerLayer = null, mapReady = false;
 
@@ -427,7 +651,20 @@ function initMap() {
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 19
     }).addTo(map);
-    markerLayer = L.layerGroup().addTo(map);
+    // 台北一區就上百間，沒有聚合會擠成一團；沒載到 markercluster 就退回普通圖層
+    markerLayer = (typeof L.markerClusterGroup === 'function')
+        ? L.markerClusterGroup({
+            maxClusterRadius: 45,
+            showCoverageOnHover: false,
+            spiderfyOnMaxZoom: true,
+            iconCreateFunction: c => L.divIcon({
+                html: `<div>${c.getChildCount()}</div>`,
+                className: 'marker-cluster',
+                iconSize: [40, 40]
+            })
+        })
+        : L.layerGroup();
+    markerLayer.addTo(map);
     mapReady = true;
 }
 
@@ -477,7 +714,6 @@ function update() {
     const now = new Date();
     const d = districtSelect.value;
     const p = $('purposeFilter').value;
-    const t = $('typeFilter').value;
     const pr = $('priceFilter').value;
     const st = $('stateFilter').value;
     const sort = $('sortFilter').value;
@@ -488,13 +724,13 @@ function update() {
         const matchCity = currentCity === 'all' || b.city === currentCity;
         const matchDistrict = d === 'all' || b.district === d;
         const matchPurpose = p === 'all' || (b.purpose || '').includes(p) || (p === '約會' && note.includes('約會'));
-        const matchType = t === 'all' ||
-            (t === '日本調酒師' && note.includes('日本調酒師')) ||
-            (t === '下午' && note.includes('下午')) ||
-            (t === '便宜' && (note.includes('便宜') || b.price === 1)) ||
-            (t === '獲獎' && hasAward(b)) ||
-            (t === '脆友' && isFriend(b)) ||
-            (b.type || '').includes(t);
+        // 酒類：選了就要符合其中任一種
+        const matchType = !selectedTypes.size || [...selectedTypes].some(id => (b.type || '').includes(id));
+        // 亮點：選了就要全部符合
+        const matchTraits = [...selectedTraits].every(id => {
+            const tag = TRAIT_TAGS.find(x => x.id === id);
+            return tag ? tag.test(b) : true;
+        });
         const matchPrice = pr === 'all' || b.price === Number(pr);
         const matchState = st === 'all' ||
             (st === 'open' && openState(b, now).state === 'open') ||
@@ -503,7 +739,7 @@ function update() {
             (st === 'unvisited' && !isVisited(b));
         const haystack = [b.name, note, b.city, b.district, b.style, ...(b.awards || [])].filter(Boolean).join(' ').toLowerCase();
         const matchSearch = !q || haystack.includes(q);
-        return matchCity && matchDistrict && matchPurpose && matchType && matchPrice && matchState && matchSearch;
+        return matchCity && matchDistrict && matchPurpose && matchType && matchTraits && matchPrice && matchState && matchSearch;
     });
 
     const sorted = sortBars(filtered, sort);
@@ -522,6 +758,7 @@ function update() {
 
     renderRoute();
     if (currentView === 'map' && mapReady) renderMap(sorted);
+    if (!$('listOverlay').hidden) renderList();
 }
 
 // ===== 事件 =====
@@ -532,6 +769,7 @@ function onActionClick(e) {
     e.stopPropagation();
     const act = btn.dataset.act;
     if (act === 'detail') { closeDetail(); openDetail(Number(btn.dataset.id)); return true; }
+    if (act === 'move') { moveInRoute(btn.dataset.key, Number(btn.dataset.d)); return true; }
     if (!handleAction(act, btn.dataset.key, btn.dataset.n)) return true;
     update();
     if (currentDetailId !== null && !overlay.hidden) openDetail(currentDetailId);   // 詳細頁開著就同步刷新
@@ -555,16 +793,74 @@ document.getElementById('map').addEventListener('click', onActionClick);
 
 $('modalClose').addEventListener('click', closeDetail);
 overlay.addEventListener('click', e => { if (e.target === overlay) closeDetail(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) closeDetail(); });
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!overlay.hidden) closeDetail();
+    else if (!$('listOverlay').hidden) closeList();
+});
 
-$('routeClear').addEventListener('click', () => { store.route = []; saveStore(); update(); });
+$('routeClear').addEventListener('click', () => {
+    store.route = []; saveStore(); update();
+    if (!$('listOverlay').hidden) renderList();
+});
+$('routeAuto').addEventListener('click', autoSortRoute);
 $('viewList').addEventListener('click', () => setView('list'));
 $('viewMap').addEventListener('click', () => setView('map'));
 
+// 多選標籤
+document.querySelector('.tag-filters').addEventListener('click', e => {
+    const chip = e.target.closest('[data-chip]');
+    if (chip && !chip.disabled) toggleChip(chip.dataset.chip, chip.dataset.id);
+});
+
+// 我的酒單
+$('progressBtn').addEventListener('click', () => openList('visited'));
+$('myListBtn').addEventListener('click', () => openList());
+$('listClose').addEventListener('click', closeList);
+$('listOverlay').addEventListener('click', e => { if (e.target === $('listOverlay')) closeList(); });
+document.querySelector('.list-tabs').addEventListener('click', e => {
+    const tab = e.target.closest('.list-tab');
+    if (tab) { listTab = tab.dataset.tab; renderList(); }
+});
+$('listBody').addEventListener('click', e => {
+    const el = e.target.closest('[data-list]');
+    if (!el || el.disabled) return;
+    const key = el.dataset.key, b = byKey[key];
+    const action = el.dataset.list;
+    if (action === 'open') { closeList(); if (b) openDetail(b._id); return; }
+    if (action === 'up') return moveInRoute(key, -1);
+    if (action === 'down') return moveInRoute(key, 1);
+    if (action === 'remove') {
+        if (listTab === 'want') delete store.want[key];
+        else if (listTab === 'visited') delete store.visited[key];
+        else { const i = store.route.indexOf(key); if (i >= 0) store.route.splice(i, 1); }
+        saveStore(); renderList(); update();
+    }
+});
+$('exportBtn').addEventListener('click', exportBackup);
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', e => {
+    if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
+    e.target.value = '';
+});
+
+// 分享
+$('shareBtn').addEventListener('click', share);
+
 // ===== 啟動 =====
 $('subtitle').textContent = `全台 ${BARS.length} 間酒友、脆友、老酒鬼推薦清單`;
+applyUrlState();                   // 先套用網址帶來的篩選條件
 renderCityNav();
 updateDistrictOptions();
-document.querySelectorAll('select, input').forEach(el => el.addEventListener('input', update));
+renderChips();
+document.querySelectorAll('select, input[type=text]').forEach(el => el.addEventListener('input', update));
 update();
 setInterval(update, 60000);        // 每分鐘更新一次營業狀態
+
+// ===== PWA：離線可用 =====
+// 只有透過 http(s) 開啟才有 service worker，直接用 file:// 開檔不會註冊（瀏覽器限制）
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => { /* 註冊失敗不影響一般使用 */ });
+    });
+}

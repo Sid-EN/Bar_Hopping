@@ -4,7 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>台灣微醺指南 | TAIWAN BAR BIBLE</title>
+    <meta name="description" content="全台 222 間知名酒吧查找指南，涵蓋 20 縣市。可依縣市、價位、營業時間篩選，支援地圖模式與跑吧路線規劃。">
+    <meta name="theme-color" content="#d4af37">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
     <style>
         :root { --gold: #d4af37; --dark: #121212; --card: #1e1e1e; --text: #e0e0e0; --muted: #888; --line: #333;
                 --open: #5ac77f; --closed: #d96a6a; --want: #ff6b8a; --visited: #5ac77f; }
@@ -20,10 +27,52 @@
         .view-switch { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
         .view-switch button { background: transparent; border: none; color: var(--muted); padding: 8px 20px; cursor: pointer; font-size: 0.9rem; font-family: inherit; transition: 0.2s; }
         .view-switch button.active { background: var(--gold); color: #000; font-weight: bold; }
-        .progress-wrap { flex: 1; min-width: 200px; max-width: 340px; }
         .progress-label { font-size: 0.78rem; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 4px; }
         .progress-bar { height: 6px; background: #2c2c2c; border-radius: 3px; overflow: hidden; }
         .progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--visited)); transition: width 0.4s; }
+
+        .toolbar-btns { display: flex; gap: 8px; }
+        .progress-wrap { flex: 1; min-width: 200px; max-width: 340px; background: transparent; border: 1px solid transparent; border-radius: 10px; padding: 6px 10px; cursor: pointer; font-family: inherit; text-align: left; transition: 0.2s; }
+        .progress-wrap:hover { border-color: var(--gold); background: rgba(212,175,55,0.06); }
+
+        /* 多選標籤篩選 */
+        .tag-filters { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .tag-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .tag-row-label { color: var(--gold); font-size: 0.85rem; font-weight: bold; flex: 0 0 62px; }
+        .tag-hint { color: #666; font-size: 0.75rem; }
+        .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .chip { background: var(--card); border: 1px solid var(--line); color: var(--text); padding: 5px 13px; border-radius: 20px; cursor: pointer; font-size: 0.82rem; font-family: inherit; transition: 0.2s; }
+        .chip:hover { border-color: var(--gold); color: var(--gold); }
+        .chip.on { background: var(--gold); color: #000; border-color: var(--gold); font-weight: bold; }
+        .chip .n { opacity: 0.6; font-size: 0.75rem; margin-left: 4px; }
+
+        /* 我的酒單 */
+        .list-tabs { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+        .list-tab { background: #2c2c2c; border: 1px solid var(--line); color: var(--muted); padding: 7px 16px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-family: inherit; transition: 0.2s; }
+        .list-tab:hover { border-color: var(--gold); color: var(--gold); }
+        .list-tab.active { background: var(--gold); color: #000; border-color: var(--gold); font-weight: bold; }
+        .list-item { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-bottom: 1px solid #2a2a2a; }
+        .list-item:last-child { border-bottom: none; }
+        .list-seq { color: var(--gold); font-weight: bold; font-size: 0.85rem; width: 22px; flex: 0 0 22px; text-align: center; }
+        .list-main { flex: 1; min-width: 0; cursor: pointer; }
+        .list-name { color: var(--gold); font-weight: bold; font-size: 0.95rem; }
+        .list-main:hover .list-name { text-decoration: underline; }
+        .list-meta { color: var(--muted); font-size: 0.78rem; }
+        .list-actions { display: flex; gap: 5px; flex-shrink: 0; }
+        .list-empty { color: var(--muted); text-align: center; padding: 34px 0; font-size: 0.9rem; }
+        .list-note { color: #666; font-size: 0.75rem; margin-top: 14px; line-height: 1.5; }
+        .mini-btn { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 6px; cursor: pointer; font-size: 0.85rem; padding: 3px 8px; font-family: inherit; line-height: 1.2; }
+        .mini-btn:hover { border-color: var(--gold); color: var(--gold); }
+        .mini-btn:disabled { opacity: 0.3; cursor: default; }
+        .mini-btn.danger:hover { border-color: var(--closed); color: var(--closed); }
+
+        /* 提示訊息 */
+        .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; background: var(--gold); color: #000; padding: 10px 22px; border-radius: 22px; font-size: 0.88rem; font-weight: bold; z-index: 1200; box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+        .toast[hidden] { display: none; }
+
+        /* 圖釘聚合（配合深色主題重新上色）*/
+        .marker-cluster { background: rgba(212,175,55,0.25); border-radius: 50%; }
+        .marker-cluster div { background: rgba(212,175,55,0.85); color: #000; font-weight: bold; width: 30px; height: 30px; margin: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'PingFang TC', sans-serif; font-size: 0.8rem; }
 
         /* 縣市分區頁籤 */
         .city-nav { margin-bottom: 24px; }
@@ -152,6 +201,10 @@
             .region-row { flex-direction: column; gap: 6px; }
             .region-label { flex: none; text-align: left; border-right: none; border-bottom: 1px solid var(--line); padding: 0 0 2px; width: 100%; }
             .city-tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+            .tag-row { align-items: flex-start; }
+            .tag-row-label { flex-basis: 100%; }
+            .chips { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; width: 100%; }
+            .toolbar-btns { width: 100%; justify-content: center; }
             .modal { padding: 22px 18px; max-height: 92vh; }
             .modal-rows { grid-template-columns: 1fr; gap: 2px; }
             .modal-rows dt { margin-top: 8px; }
@@ -173,9 +226,13 @@
             <button id="viewList" class="active">📋 清單</button>
             <button id="viewMap">🗺️ 地圖</button>
         </div>
-        <div class="progress-wrap">
-            <div class="progress-label"><span>🍸 已攻略</span><span id="progressText">0 / 0</span></div>
+        <button class="progress-wrap" id="progressBtn" title="查看我的酒單" aria-label="查看我的酒單">
+            <div class="progress-label"><span>🍸 已攻略（點我看清單）</span><span id="progressText">0 / 0</span></div>
             <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        </button>
+        <div class="toolbar-btns">
+            <button class="btn btn-ghost" id="myListBtn">📖 我的酒單</button>
+            <button class="btn btn-ghost" id="shareBtn" title="複製目前篩選條件的連結">🔗 分享</button>
         </div>
     </div>
 
@@ -193,20 +250,6 @@
                 <option value="一個人">一個人安靜</option>
                 <option value="聚會">多人聚會</option>
                 <option value="約會">適合約會</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label>🍸 酒類與亮點</label>
-            <select id="typeFilter">
-                <option value="all">所有類型</option>
-                <option value="經典">經典調酒</option>
-                <option value="特調">創意特調</option>
-                <option value="啤酒">啤酒</option>
-                <option value="日本調酒師">日本調酒師</option>
-                <option value="下午">下午就開喝</option>
-                <option value="便宜">高 CP 值/便宜</option>
-                <option value="獲獎">🏆 獲獎名店</option>
-                <option value="脆友">🧡 脆友推薦</option>
             </select>
         </div>
         <div class="filter-group">
@@ -244,6 +287,19 @@
         </div>
     </div>
 
+    <div class="tag-filters">
+        <div class="tag-row">
+            <span class="tag-row-label">🍸 酒類</span>
+            <div class="chips" id="typeChips"></div>
+            <span class="tag-hint">（可複選，符合任一種）</span>
+        </div>
+        <div class="tag-row">
+            <span class="tag-row-label">✨ 亮點</span>
+            <div class="chips" id="traitChips"></div>
+            <span class="tag-hint">（可複選，須全部符合）</span>
+        </div>
+    </div>
+
     <div class="result-count" id="resultCount">正在載入清單...</div>
     <div class="bar-grid" id="barGrid"></div>
 
@@ -269,17 +325,40 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="listOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="listTitle">
+        <button class="modal-close" id="listClose" aria-label="關閉">&times;</button>
+        <h2 class="modal-title" id="listTitle">📖 我的酒單</h2>
+        <div class="list-tabs">
+            <button class="list-tab active" data-tab="want">❤️ 收藏 <span id="cntWant">0</span></button>
+            <button class="list-tab" data-tab="visited">✓ 已攻略 <span id="cntVisited">0</span></button>
+            <button class="list-tab" data-tab="route">🍺 今晚路線 <span id="cntRoute">0</span></button>
+        </div>
+        <div id="listBody"></div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" id="exportBtn">⬇️ 匯出備份</button>
+            <button class="btn btn-ghost" id="importBtn">⬆️ 匯入備份</button>
+            <input type="file" id="importFile" accept="application/json" hidden>
+        </div>
+        <p class="list-note">酒單存在這台裝置的瀏覽器裡，不會上傳。換裝置或清除瀏覽器資料就會消失，建議偶爾匯出備份。</p>
+    </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
 <div class="route-bar" id="routeBar" hidden>
     <div class="route-inner">
         <span class="route-title">🍺 今晚路線</span>
         <div class="route-chips" id="routeChips"></div>
         <span class="route-dist" id="routeDist"></span>
+        <button class="btn btn-ghost" id="routeAuto" title="依地理位置排出最順的順序">✨ 自動排序</button>
         <a class="btn" id="routeGo" href="#" target="_blank" rel="noopener">🚕 開始導航</a>
         <button class="btn btn-ghost" id="routeClear">清空</button>
     </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>
