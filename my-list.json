@@ -1,0 +1,41 @@
+{
+  "want": {
+    "Fake Sober|台北市": true,
+    "To Infinity & Beyond|台北市": true,
+    "unDer lab|台北市": true,
+    "無 Wu (Nothingness)|台北市": true
+  },
+  "visited": {
+    "Fake Sober|台北市": {
+      "date": "2026-09-01",
+      "visits": [
+        "2026-09-01"
+      ],
+      "rating": 5
+    },
+    "unDer lab|台北市": {
+      "rating": 0,
+      "date": "2026-09-01",
+      "visits": [
+        "2026-09-01"
+      ]
+    },
+    "To Infinity & Beyond|台北市": {
+      "rating": 0,
+      "date": "2026-09-01",
+      "visits": [
+        "2026-09-01"
+      ]
+    },
+    "無 Wu (Nothingness)|台北市": {
+      "rating": 0,
+      "date": "2026-09-01",
+      "visits": [
+        "2026-09-01"
+      ]
+    }
+  },
+  "route": [],
+  "routeAt": null,
+  "savedAt": "2026-09-01T08:29:55.313Z"
+}
