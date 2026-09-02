@@ -228,6 +228,7 @@ function sinceText(dateStr) {
 
 // ===== 共用小工具 =====
 const grid = document.getElementById('barGrid');
+const gridMore = document.getElementById('gridMore');
 const countDisplay = document.getElementById('resultCount');
 const districtSelect = document.getElementById('districtFilter');
 const overlay = document.getElementById('modalOverlay');
@@ -2021,6 +2022,8 @@ function setView(v) {
     $('viewList').classList.toggle('active', v === 'list');
     $('viewMap').classList.toggle('active', v === 'map');
     grid.style.display = v === 'list' ? '' : 'none';
+    // 地圖模式沒有卡片清單，「載入更多」的提示也要跟著收起來
+    gridMore.style.display = v === 'list' ? '' : 'none';
     $('mapView').classList.toggle('active', v === 'map');
     if (v === 'map') {
         initMap();
@@ -2032,7 +2035,42 @@ function setView(v) {
 // ===== 篩選與渲染 =====
 let lastFiltered = [];
 
-function update() {
+// 一次只把 CARDS_PER_PAGE 張卡片放進 DOM，捲到底再補下一批。
+// 之前是一次塞完整份清單：卡片本身產生得很快（全部 2000 張約 11 毫秒），
+// 但瀏覽器要把三萬多個節點解析、排版、繪製出來，實測要半秒以上，
+// 而且每次改篩選條件、每打一個字都要重來一遍，操作起來就很卡。
+const CARDS_PER_PAGE = 60;
+let shownCount = 0;
+
+// keep：這次要維持已經顯示的張數（用於每分鐘的營業狀態刷新，
+// 不然使用者捲到一半會被拉回最上面那批）
+function paintCards(now, keep = 0) {
+    const list = lastFiltered;
+    if (!list.length) {
+        grid.innerHTML = '<div class="empty">找不到符合條件的酒吧，換個條件試試 🍸</div>';
+        shownCount = 0;
+        gridMore.hidden = true;
+        return;
+    }
+    shownCount = Math.min(Math.max(keep, CARDS_PER_PAGE), list.length);
+    grid.innerHTML = list.slice(0, shownCount).map(b => renderCard(b, now)).join('');
+    gridMore.hidden = shownCount >= list.length;
+}
+
+// 補下一批。用 insertAdjacentHTML 只解析新增的部分，
+// 已經在畫面上的卡片不會被重建，捲動位置也就不會跑掉。
+function showMoreCards() {
+    const list = lastFiltered;
+    if (shownCount >= list.length) { gridMore.hidden = true; return; }
+    const next = Math.min(shownCount + CARDS_PER_PAGE, list.length);
+    const now = new Date();
+    grid.insertAdjacentHTML('beforeend',
+        list.slice(shownCount, next).map(b => renderCard(b, now)).join(''));
+    shownCount = next;
+    gridMore.hidden = shownCount >= list.length;
+}
+
+function update(keepShown = false) {
     const now = new Date();
     const d = districtSelect.value;
     const p = $('purposeFilter').value;
@@ -2069,9 +2107,7 @@ function update() {
 
     const scope = currentCity === 'all' ? '全台' : currentCity;
     countDisplay.textContent = `${scope}｜搜尋到 ${sorted.length} 間適合的酒吧`;
-    grid.innerHTML = sorted.length
-        ? sorted.map(b => renderCard(b, now)).join('')
-        : '<div class="empty">找不到符合條件的酒吧，換個條件試試 🍸</div>';
+    paintCards(now, keepShown ? shownCount : 0);
 
     // 進度條
     const visitedCount = BARS.filter(isVisited).length;
@@ -2255,12 +2291,35 @@ renderChips();
 pruneRoute();                      // 過了中午就把上一輪的路線清掉
 // 只綁篩選面板裡的控制項。先前是全頁掃描，連新增表單的 11 個輸入框都綁上了，
 // 導致在表單裡每打一個字就重繪 222 張卡片，輸入嚴重卡頓。
-document.querySelectorAll('.filter-panel select, .filter-panel input[type=text]')
-    .forEach(el => el.addEventListener('input', update));
+// 下拉選單改一次就重畫一次沒問題；文字框則要等使用者停下來再畫，
+// 否則每個字母都會觸發一次全清單篩選。
+let searchTimer = null;
+document.querySelectorAll('.filter-panel select').forEach(el =>
+    el.addEventListener('input', () => update()));
+document.querySelectorAll('.filter-panel input[type=text]').forEach(el =>
+    el.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => update(), 180);
+    }));
+
+// 捲到清單底部就補下一批卡片。沒有 IntersectionObserver 的環境（例如測試用的
+// jsdom）退回捲動事件，行為一樣。
+if (typeof IntersectionObserver === 'function') {
+    new IntersectionObserver(entries => {
+        if (entries.some(e => e.isIntersecting)) showMoreCards();
+    }, { rootMargin: '600px' }).observe(gridMore);
+} else {
+    window.addEventListener('scroll', () => {
+        if (gridMore.hidden) return;
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 600) showMoreCards();
+    }, { passive: true });
+}
+gridMore.addEventListener('click', showMoreCards);   // 觀察器沒觸發時的保險
+
 update();
 setInterval(() => {
     if (pruneRoute()) toast('已過中午 12 點，今晚路線已重設 🍸');
-    update();                      // 順便更新營業狀態
+    update(true);                  // 順便更新營業狀態，但保留已經捲出來的卡片
 }, 60000);
 
 // ===== PWA：離線可用 =====

@@ -256,6 +256,7 @@
         /* 酒吧列表 */
         .result-count { margin-bottom: 16px; color: var(--muted); font-size: 0.9rem; }
         .bar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .grid-more { text-align: center; padding: 24px 0; color: var(--muted, #8a8a8a); font-size: 0.9rem; }
         .bar-card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #2c2c2c; transition: 0.3s; position: relative; display: flex; flex-direction: column; cursor: pointer; }
         .bar-card:hover, .bar-card:focus-visible { transform: translateY(-5px); border-color: var(--gold); box-shadow: 0 10px 20px rgba(0,0,0,0.5); outline: none; }
         .bar-card.in-route { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
@@ -470,6 +471,8 @@
 
     <div class="result-count" id="resultCount">正在載入清單...</div>
     <div class="bar-grid" id="barGrid"></div>
+    <!-- 捲到這裡就補下一批卡片；全部載完後隱藏 -->
+    <div class="grid-more" id="gridMore" hidden>再往下捲載入更多…</div>
 
     <div id="mapView">
         <div id="map"></div>

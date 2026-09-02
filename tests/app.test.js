@@ -130,7 +130,11 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         ' insertIntoDataJs, findDuplicateInSource, parseDataJs, b64encode, b64decode,' +
         ' loadGh, saveGh, fillGhForm, saveGhFromForm, formDirty, snapshotForm, applyLocalChange, removeLocal,' +
         ' expiryInfo, cleanToken, tokenLooksValid, applyReveal, testGh, DISTRICTS,' +
-        ' lastResetPoint, pruneRoute, touchRoute, personalData, syncUp, syncDown, ROUTE_RESET_HOUR };');
+        ' lastResetPoint, pruneRoute, touchRoute, personalData, syncUp, syncDown, ROUTE_RESET_HOUR,' +
+        // 卡片是分批渲染的，所以測試要能問「篩選出幾間」（不等於 DOM 裡有幾張卡），
+        // 也要能把剩下的批次全部展開再數 DOM。lastFiltered 會被整個換掉，用 getter 取才不會拿到舊的。
+        ' getFiltered: () => lastFiltered, showMoreCards, CARDS_PER_PAGE,' +
+        ' showAll: () => { while (shownCount < lastFiltered.length) showMoreCards(); } };');
 
     const api = window.__t;
     return {
@@ -140,7 +144,18 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         qsa: sel => [...window.document.querySelectorAll(sel)],
         click: el => el && el.dispatchEvent(new window.MouseEvent('click', { bubbles: true })),
         input: el => el.dispatchEvent(new window.Event('input', { bubbles: true })),
-        cards: () => window.document.querySelectorAll('.bar-card').length
+        cards: () => window.document.querySelectorAll('.bar-card').length,
+        // 篩選結果的總數。卡片分批進 DOM，所以這個值通常大於 cards()。
+        matched: () => window.__t.getFiltered().length,
+        // 把剩下的批次全部展開，讓需要掃描整份清單的斷言可以照舊數 DOM
+        showAll: () => { window.__t.showAll(); return window.document.querySelectorAll('.bar-card').length; },
+        // 搜尋框是 debounce 的，要等它真的觸發重繪
+        search: async q => {
+            const el = window.document.getElementById('searchInput');
+            el.value = q;
+            el.dispatchEvent(new window.Event('input', { bubbles: true }));
+            await new Promise(r => setTimeout(r, 250));
+        }
     };
 }
 
@@ -157,14 +172,60 @@ await step(async () => {
     const e = boot();
     await section('基本渲染');
     const total = e.api.BARS.length;
-    t(`渲染 ${total} 張卡片`, e.cards() === total, e.cards());
+    // 首屏只放一批卡片，其餘捲到底再補；篩選結果本身仍是全部
+    t(`首屏只渲染 ${e.api.CARDS_PER_PAGE} 張卡片`, e.cards() === e.api.CARDS_PER_PAGE, e.cards());
+    t(`篩選結果為全部 ${total} 間`, e.matched() === total, e.matched());
+    t('還有未載入的批次時顯示提示', !e.$('gridMore').hidden);
     t('副標顯示總數', e.$('subtitle').textContent.includes(String(total)));
     t('進度條初始為 0', e.$('progressText').textContent.startsWith('0 /'));
     t('路線列初始隱藏', e.$('routeBar').hidden);
+
+    t(`展開後渲染 ${total} 張卡片`, e.showAll() === total, e.cards());
+    t('全部載完後隱藏提示', e.$('gridMore').hidden);
     t('每張卡都有營業狀態', e.qsa('.open-pill').length === total);
     t('星級數 = 有評分筆數', e.qsa('.stars-fill').length === e.api.BARS.filter(b => b.rating).length);
     t('人均數 = 有價位筆數',
         (e.$('barGrid').innerHTML.match(/人均/g) || []).length === e.api.BARS.filter(b => b.price).length);
+});
+
+// ---------------------------------------------------------------- 分批渲染
+// 曾經一次把整份清單塞進 innerHTML，資料到兩千間之後每次篩選都要重建三萬多個節點，
+// 操作明顯卡頓。這裡守住「進 DOM 的卡片數有上限、而且會隨捲動增加」。
+await step(async () => {
+    const e = boot();
+    await section('分批渲染');
+    const PAGE = e.api.CARDS_PER_PAGE;
+    const total = e.api.BARS.length;
+
+    t('首屏卡片數不超過一批', e.cards() <= PAGE, e.cards());
+    t('首屏節點數遠少於全部展開', e.qsa('#barGrid *').length < 3000, e.qsa('#barGrid *').length);
+
+    // 捲到底補下一批
+    const firstName = e.$('barGrid').querySelector('.bar-name').textContent;
+    e.api.showMoreCards();
+    t('捲動後補上下一批', e.cards() === Math.min(PAGE * 2, total), e.cards());
+    t('補批次不會重建已顯示的卡片',
+        e.$('barGrid').querySelector('.bar-name').textContent === firstName);
+
+    // 改篩選條件要回到第一批，不然清單換了卻還留著上一份的長度
+    e.api.selectCity('台南市');
+    t('換篩選條件後回到第一批', e.cards() === Math.min(PAGE, e.matched()), e.cards());
+    e.api.selectCity('all');
+
+    // 每分鐘刷新營業狀態時若也重置，使用者捲到一半會被拉回開頭
+    e.api.showMoreCards(); e.api.showMoreCards();
+    const shown = e.cards();
+    e.api.update(true);
+    t('定時刷新保留已捲出的卡片', e.cards() === shown, e.cards() + ' vs ' + shown);
+    e.api.update();
+    t('一般刷新回到第一批', e.cards() === PAGE, e.cards());
+
+    // 篩到剩下不足一批時，提示要收起來
+    await e.search('zzz不可能存在的店zzz');
+    t('無結果時隱藏載入提示', e.$('gridMore').hidden);
+    t('無結果時顯示空狀態', e.$('barGrid').innerHTML.includes('找不到符合條件'));
+    await e.search('');
+    t('清空搜尋後恢復', e.cards() === PAGE && !e.$('gridMore').hidden, e.cards());
 });
 
 // ---------------------------------------------------------------- 營業時間解析
@@ -207,19 +268,19 @@ await step(async () => {
 
     const classic = T.BARS.filter(b => (b.type || '').includes('經典')).length;
     e.click(typeChip('經典調酒'));
-    t('選經典後數量正確', e.cards() === classic, e.cards() + ' vs ' + classic);
+    t('選經典後數量正確', e.matched() === classic, e.matched() + ' vs ' + classic);
     const or = T.BARS.filter(b => (b.type || '').includes('經典') || (b.type || '').includes('啤酒')).length;
     e.click(typeChip('啤酒'));
-    t('酒類複選為 OR', e.cards() === or, e.cards() + ' vs ' + or);
+    t('酒類複選為 OR', e.matched() === or, e.matched() + ' vs ' + or);
     e.click(typeChip('經典調酒')); e.click(typeChip('啤酒'));
-    t('取消後回到全部', e.cards() === total);
+    t('取消後回到全部', e.matched() === total, e.matched());
 
     const awards = T.BARS.filter(T.hasAward).length;
     e.click(traitChip('獲獎'));
-    t(`獲獎標籤 ${awards} 間`, e.cards() === awards, e.cards());
+    t(`獲獎標籤 ${awards} 間`, e.matched() === awards, e.matched());
     const and = T.BARS.filter(b => T.hasAward(b) && T.isFriend(b)).length;
     e.click(traitChip('脆友'));
-    t('亮點複選為 AND', e.cards() === and, e.cards() + ' vs ' + and);
+    t('亮點複選為 AND', e.matched() === and, e.matched() + ' vs ' + and);
     e.click(traitChip('獲獎')); e.click(traitChip('脆友'));
     t('標籤狀態已清空', T.selectedTraits.size === 0);
 
@@ -232,15 +293,15 @@ await step(async () => {
     t(`價位篩選 ${p2} 間`, e.$('resultCount').textContent.includes(p2 + ' 間'));
     e.$('priceFilter').value = 'all'; e.input(e.$('priceFilter'));
 
-    e.$('searchInput').value = '茶酒'; e.input(e.$('searchInput'));
-    t('關鍵字搜尋有結果', e.cards() > 0);
-    e.$('searchInput').value = ''; e.input(e.$('searchInput'));
+    await e.search('茶酒');
+    t('關鍵字搜尋有結果', e.matched() > 0, e.matched());
+    await e.search('');
 
     const names = () => [...e.$('barGrid').innerHTML.matchAll(/class="bar-name">([^<]+)</g)].map(m => m[1]);
     const at = n => T.BARS.find(b => b.name === n.replace(/&amp;/g, '&').replace(/&#39;/g, "'"));
     for (const mode of ['award', 'rating', 'price-asc', 'name', 'default']) {
         e.$('sortFilter').value = mode; e.input(e.$('sortFilter'));
-        t(`排序 ${mode} 不掉資料`, e.cards() === total, e.cards());
+        t(`排序 ${mode} 不掉資料`, e.matched() === total, e.matched());
     }
     e.$('sortFilter').value = 'rating'; e.input(e.$('sortFilter'));
     const rated = names().slice(0, 5).map(at).filter(Boolean);
@@ -330,7 +391,7 @@ await step(async () => {
     e.api.selectCity('台南市');
     e.$('priceFilter').value = '2'; e.input(e.$('priceFilter'));
     e.click(e.qsa('#traitChips .chip').find(c => c.textContent.includes('獲獎')));
-    e.$('searchInput').value = '茶'; e.input(e.$('searchInput'));
+    await e.search('茶');
     const url = e.api.stateToUrl();
     t('網址含縣市', url.includes('city=' + encodeURIComponent('台南市')));
     t('網址含價位', url.includes('price=2'));
@@ -344,7 +405,7 @@ await step(async () => {
     t('還原價位', e2.$('priceFilter').value === '2');
     t('還原亮點標籤', e2.api.selectedTraits.has('award'));
     t('還原關鍵字', e2.$('searchInput').value === '茶');
-    t('還原後結果一致', e2.cards() === e.cards(), e2.cards() + ' vs ' + e.cards());
+    t('還原後結果一致', e2.matched() === e.matched(), e2.matched() + ' vs ' + e.matched());
 });
 
 // ---------------------------------------------------------------- 地圖
@@ -384,6 +445,7 @@ await step(async () => {
     t('按鈕標示已定位', e.$('locateBtn').classList.contains('on'));
     t('卡片顯示距離', e.$('barGrid').innerHTML.includes('距離'));
 
+    e.showAll();   // 要看排序的尾端，得先把所有批次展開
     const names = [...e.$('barGrid').innerHTML.matchAll(/class="bar-name">([^<]+)</g)].map(m => m[1]);
     const at = n => T.BARS.find(b => b.name === n.replace(/&amp;/g, '&').replace(/&#39;/g, "'"));
     const me = { lat: 25.0478, lng: 121.5170 };
@@ -440,7 +502,7 @@ await step(async () => {
     t('有提示訊息', e.$('toast').textContent.includes('就決定是你了'));
     e.click(e.$('modalClose'));
     // 篩到沒結果時要擋下來
-    e.$('searchInput').value = 'zzz不可能存在的店zzz'; e.input(e.$('searchInput'));
+    await e.search('zzz不可能存在的店zzz');
     e.click(e.$('randomBtn'));
     t('無結果時不開詳細頁', e.$('modalOverlay').hidden);
     t('無結果時有提示', e.$('toast').textContent.includes('沒有可以抽'));
