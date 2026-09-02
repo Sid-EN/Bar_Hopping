@@ -13,14 +13,39 @@ const t = (name, cond, extra) => {
     cond ? pass++ : fail++;
     console.log(cond ? '  PASS' : '  FAIL', name, !cond && extra !== undefined ? '→ ' + extra : '');
 };
-const section = s => console.log('\n=== ' + s + ' ===');
+// 每個 boot() 都會建一個 jsdom；資料量大的時候（上千間酒吧）這些 DOM 加起來很吃記憶體，
+// 不主動釋放會讓整份測試在跑到後段時 heap 爆掉。
+// 每個區塊的形式都是「先 boot 再 section」，所以在 section() 時把上一批關掉就好；
+// 保留最後建立的那一個，因為它就是當前區塊剛開好的環境
+// （少數區塊會在 section 之後再開第二個 e2，那個會留到下一次 section 才關，剛好夠用）。
+const openWindows = [];
+const closePrevious = () => {
+    while (openWindows.length > 1) {
+        const w = openWindows.shift();
+        try { w.close(); } catch (e) { /* 已經關掉就算了 */ }
+    }
+};
+// jsdom 的 window.close() 不是同步釋放：要讓出一次事件迴圈，那份 DOM 才會變成可回收。
+// 這支測試原本從頭到尾都是同步的，所以 29 個 jsdom 會一路累積到 heap 爆掉。
+const section = async s => {
+    closePrevious();
+    await new Promise(r => setTimeout(r, 0));
+    console.log('\n=== ' + s + ' ===');
+};
+
+// 這三份檔案每次 boot 都要用，只讀一次就好
+const readOnce = (() => {
+    const cache = {};
+    return f => (cache[f] ??= fs.readFileSync(path.join(ROOT, f), 'utf8'));
+})();
 
 // 建立一個載好程式的測試環境
 function boot(url = 'https://example.com/index.html', seed = null) {
-    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
+    const html = readOnce('index.html')
         .replace(/<script src="https:\/\/cdnjs[^"]*"><\/script>/g, '')   // 離線測試，不載 CDN
         .replace(/<link rel="stylesheet" href="https:\/\/cdnjs[^"]*">/g, '');
     const dom = new JSDOM(html, { runScripts: 'outside-only', url });
+    openWindows.push(dom.window);
     const { window } = dom;
     window.alert = m => { window.__alert = m; };
     window.prompt = (a, b) => b;
@@ -80,8 +105,8 @@ function boot(url = 'https://example.com/index.html', seed = null) {
 
     // 真實瀏覽器中多個 <script> 共用頂層作用域，所以合併成一次 eval
     window.eval(
-        fs.readFileSync(path.join(ROOT, 'data.js'), 'utf8') + '\n' +
-        fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8') + '\n' +
+        readOnce('data.js') + '\n' +
+        readOnce('app.js') + '\n' +
         ';window.__t = { BARS, PRICE_TIERS, hasGeo, hasAward, isFriend, barKey, byKey, store, saveStore,' +
         ' handleAction, update, renderRoute, renderList, openList, selectCity, stateToUrl, autoSortRoute,' +
         ' parseHours, openState, selectedTypes, selectedTraits, distanceKm, routeSchedule, yearStats,' +
@@ -105,10 +130,18 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     };
 }
 
+// 每個測試區塊各自包成一個 async function：函式回傳後區塊內的區域變數（含 jsdom）
+// 就會脫離作用域。包在同一個大的 async function 裡不行——V8 會把 await 前後的
+// 區塊變數一起提升到該函式的 context，整份跑完之前都不會釋放。
+const step = fn => fn();
+
+async function main() {
+
+
 // ---------------------------------------------------------------- 基本渲染
-{
+await step(async () => {
     const e = boot();
-    section('基本渲染');
+    await section('基本渲染');
     const total = e.api.BARS.length;
     t(`渲染 ${total} 張卡片`, e.cards() === total, e.cards());
     t('副標顯示總數', e.$('subtitle').textContent.includes(String(total)));
@@ -118,12 +151,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('星級數 = 有評分筆數', e.qsa('.stars-fill').length === e.api.BARS.filter(b => b.rating).length);
     t('人均數 = 有價位筆數',
         (e.$('barGrid').innerHTML.match(/人均/g) || []).length === e.api.BARS.filter(b => b.price).length);
-}
+});
 
 // ---------------------------------------------------------------- 營業時間解析
-{
+await step(async () => {
     const e = boot();
-    section('營業時間解析');
+    await section('營業時間解析');
     const P = e.api.parseHours, DN = ['日', '一', '二', '三', '四', '五', '六'];
     const days = str => { const p = P(str); return p ? Object.keys(p.schedule).map(Number).sort().map(d => DN[d]).join('') : null; };
     const cases = [
@@ -145,12 +178,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('公休當晚為休息', S({ hours: '20:00–02:00（週一休）' }, D(1, 21, 0)).state === 'closed');
     t('白天店晚上已關', S({ hours: '11:00–18:00（週四休）' }, D(0, 19, 0)).state === 'closed');
     t('無法解析回報 unknown', S({ hours: '營業至02:00' }, D(0, 21, 0)).state === 'unknown');
-}
+});
 
 // ---------------------------------------------------------------- 篩選與排序
-{
+await step(async () => {
     const e = boot();
-    section('篩選與排序');
+    await section('篩選與排序');
     const T = e.api, total = T.BARS.length;
     const typeChip = txt => e.qsa('#typeChips .chip').find(c => c.textContent.includes(txt));
     const traitChip = txt => e.qsa('#traitChips .chip').find(c => c.textContent.includes(txt));
@@ -199,12 +232,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     const rated = names().slice(0, 5).map(at).filter(Boolean);
     t('評分排序為遞減', rated.every((b, i) => i === 0 || (rated[i - 1].rating || 0) >= (b.rating || 0)));
     e.$('sortFilter').value = 'default'; e.input(e.$('sortFilter'));
-}
+});
 
 // ---------------------------------------------------------------- 收藏、打卡、酒單
-{
+await step(async () => {
     const e = boot();
-    section('收藏、打卡與我的酒單');
+    await section('收藏、打卡與我的酒單');
     const T = e.api;
     const keys = T.BARS.slice(0, 3).map(T.barKey);
 
@@ -240,12 +273,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     e.click(e.$('listClose'));
 
     t('狀態寫入 localStorage', Object.keys(JSON.parse(e.window.localStorage.getItem('barbible.v1')).want).length === 2);
-}
+});
 
 // ---------------------------------------------------------------- 今晚路線
-{
+await step(async () => {
     const e = boot();
-    section('今晚路線');
+    await section('今晚路線');
     const T = e.api;
     const rkeys = T.BARS.filter(T.hasGeo).filter(b => b.city === '台北市').slice(0, 4).map(T.barKey);
     rkeys.forEach(k => T.handleAction('route', k)); T.update();
@@ -274,12 +307,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     for (let i = 0; i < 10; i++) e.click(e.qsa('.bar-card [data-act="route"]')[i]);
     t('路線上限 8 攤', e.qsa('.route-chip').length === 8, e.qsa('.route-chip').length);
     t('超過上限有提示', typeof e.window.__alert === 'string' && e.window.__alert.includes('8'));
-}
+});
 
 // ---------------------------------------------------------------- 網址分享
-{
+await step(async () => {
     const e = boot();
-    section('網址分享');
+    await section('網址分享');
     e.api.selectCity('台南市');
     e.$('priceFilter').value = '2'; e.input(e.$('priceFilter'));
     e.click(e.qsa('#traitChips .chip').find(c => c.textContent.includes('獲獎')));
@@ -298,12 +331,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('還原亮點標籤', e2.api.selectedTraits.has('award'));
     t('還原關鍵字', e2.$('searchInput').value === '茶');
     t('還原後結果一致', e2.cards() === e.cards(), e2.cards() + ' vs ' + e.cards());
-}
+});
 
 // ---------------------------------------------------------------- 地圖
-{
+await step(async () => {
     const e = boot();
-    section('地圖模式');
+    await section('地圖模式');
     const T = e.api;
     const geo = T.BARS.filter(T.hasGeo).length;
     e.click(e.$('viewMap'));
@@ -322,13 +355,13 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     e.click(e.qsa('#traitChips .chip').find(c => c.textContent.includes('獲獎')));
     e.click(e.$('viewList'));
     t('切回清單', !e.$('mapView').classList.contains('active'));
-}
+});
 
 
 // ---------------------------------------------------------------- 離我最近
-{
+await step(async () => {
     const e = boot();
-    section('離我最近');
+    await section('離我最近');
     const T = e.api;
     t('初始沒有距離排序選項', !e.$('sortFilter').querySelector('[value="near"]'));
     e.click(e.$('locateBtn'));
@@ -351,12 +384,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     e2.click(e2.$('locateBtn'));
     t('拒絕定位有提示', e2.$('toast').textContent.includes('拒絕'), e2.$('toast').textContent);
     t('拒絕後按鈕恢復', !e2.$('locateBtn').disabled);
-}
+});
 
 // ---------------------------------------------------------------- 路線時間推算
-{
+await step(async () => {
     const e = boot();
-    section('路線營業時間檢查');
+    await section('路線營業時間檢查');
     const T = e.api;
 
     // 用固定資料驗證推算邏輯
@@ -382,12 +415,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('有整體結論', e.$('routeSchedule').innerHTML.includes('sched-alert') || e.$('routeSchedule').innerHTML.includes('sched-ok'));
     e.click(e.$('routeClear'));
     t('清空後時間表消失', e.$('routeSchedule').innerHTML === '');
-}
+});
 
 // ---------------------------------------------------------------- 隨機推薦
-{
+await step(async () => {
     const e = boot();
-    section('今晚喝哪間');
+    await section('今晚喝哪間');
     e.click(e.$('randomBtn'));
     t('隨機抽出後開啟詳細頁', !e.$('modalOverlay').hidden);
     t('有提示訊息', e.$('toast').textContent.includes('就決定是你了'));
@@ -397,12 +430,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     e.click(e.$('randomBtn'));
     t('無結果時不開詳細頁', e.$('modalOverlay').hidden);
     t('無結果時有提示', e.$('toast').textContent.includes('沒有可以抽'));
-}
+});
 
 // ---------------------------------------------------------------- 筆記與到訪紀錄
-{
+await step(async () => {
     const e = boot();
-    section('個人筆記與到訪紀錄');
+    await section('個人筆記與到訪紀錄');
     const T = e.api;
     const b = T.BARS[0], k = T.barKey(b);
 
@@ -424,12 +457,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('多次到訪正確計數', e.$('barGrid').innerHTML.includes('去過 2 次'));
     t('相對時間文字', T.sinceText('2026-08-29').length > 0);
     t('備份含筆記', JSON.parse(e.window.localStorage.getItem('barbible.v1')).visited[k].note.includes('長島'));
-}
+});
 
 // ---------------------------------------------------------------- 年度回顧
-{
+await step(async () => {
     const e = boot();
-    section('年度回顧');
+    await section('年度回顧');
     const T = e.api;
     const bars = T.BARS.slice(0, 5);
     bars.forEach((b, i) => {
@@ -455,12 +488,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('顯示總進度', e.$('recapBody').innerHTML.includes('已攻略全台'));
     e.click(e.$('recapClose'));
     t('可以關閉', e.$('recapOverlay').hidden);
-}
+});
 
 // ---------------------------------------------------------------- 分享卡片圖
-{
+await step(async () => {
     const e = boot();
-    section('分享卡片圖');
+    await section('分享卡片圖');
     const T = e.api;
     const bar = T.BARS.find(b => b.rating && b.note) || T.BARS[0];
     e.api.shareCard(bar);
@@ -473,12 +506,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
 
     e.click(e.qsa('.bar-card')[0]);
     t('詳細頁有產生分享圖按鈕', !!e.window.document.querySelector('[data-act="card"]'));
-}
+});
 
 // ---------------------------------------------------------------- 主題切換
-{
+await step(async () => {
     const e = boot();
-    section('淺色 / 深色主題');
+    await section('淺色 / 深色主題');
     t('預設為深色', e.window.document.documentElement.dataset.theme === 'dark',
        e.window.document.documentElement.dataset.theme);
     e.click(e.$('themeBtn'));
@@ -491,13 +524,13 @@ function boot(url = 'https://example.com/index.html', seed = null) {
 
     const e2 = boot();
     t('重新載入沿用偏好', e2.window.document.documentElement.dataset.theme === 'dark');
-}
+});
 
 
 // ---------------------------------------------------------------- 這次修的四個問題
-{
+await step(async () => {
     const e = boot();
-    section('回報問題的修正');
+    await section('回報問題的修正');
     const T = e.api, W = e.window;
 
     // (1) 表單輸入不該觸發整頁重繪
@@ -546,12 +579,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('必填標題有兩個', reqTitles.length === 2, reqTitles.length);
     t('星號與文字在同一元素', reqTitles.every(el => el.textContent.includes('*') && el.textContent.trim().length > 1));
     t('沒有殘留的 f-req 結構', !e.$('barForm').querySelector('.f-req'));
-}
+});
 
 // ---------------------------------------------------------------- 寫回 repo
-{
+await step(async () => {
     const e = boot();
-    section('寫回 repo');
+    await section('寫回 repo');
     const T = e.api;
 
     // base64 往返（data.js 全是中文，這裡最容易出錯）
@@ -614,12 +647,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('未設定權杖會提示', e.$('toast').textContent.includes('權杖'), e.$('toast').textContent);
     t('並展開設定區塊', e.$('ghBox').open);
     t('repo 欄位有預設值', e.$('ghRepo').value === 'Sid-EN/Bar_Hopping', e.$('ghRepo').value);
-}
+});
 
 // ---------------------------------------------------------------- 表單欄位不得出現 null
-{
+await step(async () => {
     const e = boot();
-    section('表單欄位空值處理');
+    await section('表單欄位空值處理');
     const T = e.api;
     const vals = () => [...e.$('barForm').elements].filter(el => el.name && el.type !== 'checkbox')
         .map(el => ({ name: el.name, v: el.value }));
@@ -653,12 +686,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('NaN 也轉成空字串', nv.find(x => x.name === 'lat').v === '');
     t('awards 為 null 時留白', nv.find(x => x.name === 'awards').v === '');
     T.closeForm(true);
-}
+});
 
 // ---------------------------------------------------------------- 防重複
-{
+await step(async () => {
     const e = boot();
-    section('防止重複新增');
+    await section('防止重複新增');
     const T = e.api;
 
     t('正規化忽略大小寫', T.normName('Bar Weekend') === T.normName('BAR WEEKEND'));
@@ -704,12 +737,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     const r = T.insertIntoDataJs(src, { name: '別人剛加的吧', city: '台北市', type: '特調' });
     t('同名寫入為取代', r.mode === 'update');
     t('取代後不會變成兩筆', T.parseDataJs(r.content).length === 1);
-}
+});
 
 // ---------------------------------------------------------------- 編輯與刪除既有酒吧
-{
+await step(async () => {
     const e = boot();
-    section('編輯既有酒吧');
+    await section('編輯既有酒吧');
     const T = e.api;
 
     e.click(e.qsa('.bar-card')[0]);
@@ -742,12 +775,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('刪除後總數 -1', T.BARS.length === before - 1, T.BARS.length + ' vs ' + (before - 1));
     t('刪除後收藏一併清掉', !T.store.want[newKey]);
     t('刪除後不在路線裡', !T.store.route.includes(newKey));
-}
+});
 
 // ---------------------------------------------------------------- 權杖處理
-{
+await step(async () => {
     const e = boot();
-    section('存取權杖處理');
+    await section('存取權杖處理');
     const T = e.api;
 
     e.click(e.$('addBtn'));
@@ -790,12 +823,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('index.html 沒有寫死的權杖', !TOKEN_RE.test(htmlSrc));
     t('README 沒有貼到真實權杖', !TOKEN_RE.test(readme));
     t('data.js 沒有權杖', !TOKEN_RE.test(fs.readFileSync(path.join(ROOT, 'data.js'), 'utf8')));
-}
+});
 
 // ---------------------------------------------------------------- 權杖到期日（使用者自填）
-{
+await step(async () => {
     const e = boot();
-    section('權杖到期日');
+    await section('權杖到期日');
     const T = e.api;
 
     e.click(e.$('addBtn'));
@@ -827,12 +860,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
 
     e.click(e.$('ghClear'));
     t('清除權杖後到期日保留', T.loadGh().expiry === '2027-09-01', T.loadGh().expiry);
-}
+});
 
 // ---------------------------------------------------------------- 權杖貼上與檢視
-{
+await step(async () => {
     const e = boot();
-    section('權杖貼上與檢視');
+    await section('權杖貼上與檢視');
     const T = e.api;
     const GOOD = 'github_pat_' + 'B'.repeat(30);
 
@@ -879,13 +912,13 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     T.fillGhForm();
     e.click(e.$('ghSave'));
     t('沒改動時沿用原權杖', T.loadGh().token === GOOD);
-}
+});
 
 
 // ---------------------------------------------------------------- 今晚路線中午重設
-{
+await step(async () => {
     const e = boot();
-    section('今晚路線中午重設');
+    await section('今晚路線中午重設');
     const T = e.api;
 
     t('重設時點為中午 12 點', T.ROUTE_RESET_HOUR === 12);
@@ -927,12 +960,12 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     delete T.store.routeAt;
     T.saveStore();
     t('沒有時間戳的舊路線視為過期', T.pruneRoute() === true);
-}
+});
 
 // ---------------------------------------------------------------- 個人酒單同步
-{
+await step(async () => {
     const e = boot();
-    section('個人酒單同步');
+    await section('個人酒單同步');
     const T = e.api;
 
     t('有上傳按鈕', !!e.$('syncUpBtn'));
@@ -963,11 +996,11 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     t('介面明確警告 repo 是公開的', html.includes('這個 repo 是公開的'));
     t('警告有提到筆記會公開', html.includes('寫在筆記裡的內容'));
     t('有指引改用匯出備份', html.includes('匯出／匯入備份'));
-}
+});
 
 // ---------------------------------------------------------------- Service Worker 不快取 API
-{
-    section('Service Worker 快取範圍');
+await step(async () => {
+    await section('Service Worker 快取範圍');
     const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
     t('放行 api.github.com', sw.includes("url.hostname === 'api.github.com'"));
     t('放行帶授權標頭的請求', sw.includes("req.headers.get('Authorization')"));
@@ -976,13 +1009,13 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     // api.github.com 的判斷必須在快取邏輯之前
     t('放行判斷在快取之前',
         sw.indexOf("api.github.com") < sw.indexOf('caches.match(req)'));
-}
+});
 
 
 // ---------------------------------------------------------------- 行政區清單完整性
-{
+await step(async () => {
     const e = boot();
-    section('行政區清單');
+    await section('行政區清單');
     const T = e.api;
 
     // 內政部公告的各縣市行政區數量。少一個就代表清單有缺，篩選會漏掉那一區。
@@ -1028,7 +1061,13 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         opts.filter(o => o.textContent.includes('（0）')).every(o => o.disabled));
     t('有酒吧的區可以選', opts.some(o => o.value === '羅東鎮' && !o.disabled));
     e.api.selectCity('all');
+});
 }
 
-console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');
-process.exit(fail ? 1 : 0);
+main().then(() => {
+    console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');
+    process.exit(fail ? 1 : 0);
+}).catch(err => {
+    console.error('測試執行中斷：', err);
+    process.exit(1);
+});
