@@ -8,6 +8,7 @@ const CORE = [
   './index.html',
   './app.js',
   './data.js',
+  './stations.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',

@@ -120,6 +120,7 @@ function boot(url = 'https://example.com/index.html', seed = null) {
     // 真實瀏覽器中多個 <script> 共用頂層作用域，所以合併成一次 eval
     window.eval(
         readOnce('data.js') + '\n' +
+        readOnce('stations.js') + '\n' +
         readOnce('app.js') + '\n' +
         ';window.__t = { BARS, PRICE_TIERS, hasGeo, hasAward, isFriend, barKey, byKey, store, saveStore,' +
         ' handleAction, update, renderRoute, renderList, openList, selectCity, stateToUrl, autoSortRoute,' +
@@ -133,7 +134,9 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         ' lastResetPoint, pruneRoute, touchRoute, personalData, syncUp, syncDown, ROUTE_RESET_HOUR,' +
         // 卡片是分批渲染的，所以測試要能問「篩選出幾間」（不等於 DOM 裡有幾張卡），
         // 也要能把剩下的批次全部展開再數 DOM。lastFiltered 會被整個換掉，用 getter 取才不會拿到舊的。
-        ' getFiltered: () => lastFiltered, goToPage, setPageSize, renderPager,' +
+        ' getFiltered: () => lastFiltered, goToPage, setPageSize, renderPager, TRAIT_TAGS,'
+        + ' timeToDate, nearestStation, stationText, STATION_NEAR_KM, STATION_MAX_KM,'
+        + ' applySharedRoute, STATIONS,' +
         ' PAGE_SIZES, pageButtons, getPageSize: () => pageSize, getPage: () => currentPage,' +
         ' pageCount };');
 
@@ -315,7 +318,7 @@ await step(async () => {
     const traitChip = txt => e.qsa('#traitChips .chip').find(c => c.textContent.includes(txt));
 
     t('酒類標籤 3 個', e.qsa('#typeChips .chip').length === 3);
-    t('亮點標籤 8 個', e.qsa('#traitChips .chip').length === 8);
+    t(`亮點標籤 ${T.TRAIT_TAGS.length} 個`, e.qsa('#traitChips .chip').length === T.TRAIT_TAGS.length, e.qsa('#traitChips .chip').length);
 
     const classic = T.BARS.filter(b => (b.type || '').includes('經典')).length;
     e.click(typeChip('經典調酒'));
@@ -433,6 +436,171 @@ await step(async () => {
     for (let i = 0; i < 10; i++) e.click(e.qsa('.bar-card [data-act="route"]')[i]);
     t('路線上限 8 攤', e.qsa('.route-chip').length === 8, e.qsa('.route-chip').length);
     t('超過上限有提示', typeof e.window.__alert === 'string' && e.window.__alert.includes('8'));
+});
+
+// ---------------------------------------------------------------- 指定時段
+await step(async () => {
+    const e = boot();
+    await section('指定時段');
+    const T = e.api;
+
+    // 換算規則：中午前的時間指的是「今晚喝到隔天凌晨」的那個凌晨，
+    // 與今晚路線中午重設用同一個分界，使用者只要記一個規則。
+    const noon = new Date(2026, 8, 2, 20, 0);          // 晚上 8 點
+    t('23:00 算今天', T.timeToDate('23:00', noon).getDate() === 2);
+    t('01:00 算隔天凌晨', T.timeToDate('01:00', noon).getDate() === 3);
+    const dawn = new Date(2026, 8, 2, 3, 0);            // 現在就是凌晨 3 點
+    t('現在是凌晨時 01:00 算今天', T.timeToDate('01:00', dawn).getDate() === 2);
+    t('格式不對回 null', T.timeToDate('25:00') === null && T.timeToDate('abc') === null
+        && T.timeToDate('') === null);
+
+    // 篩選本身
+    const before = e.matched();
+    e.$('atTimeFilter').value = '05:00';                // 凌晨五點，幾乎都打烊了
+    e.input(e.$('atTimeFilter'));
+    const at5 = e.matched();
+    t('凌晨五點營業的店明顯較少', at5 < before, at5 + ' vs ' + before);
+    t('篩出來的店在那個時間確實有開', T.getFiltered().slice(0, 20).every(b =>
+        T.openState(b, T.timeToDate('05:00')).state === 'open'));
+    t('時間未知的店被排除', T.getFiltered().every(b => b.hours && b.hours !== '-'));
+    t('提示說明換算後的日期', e.$('atTimeHint').textContent.includes('05:00'));
+
+    e.click(e.$('atTimeClear'));
+    t('清除後恢復', e.$('atTimeFilter').value === '' && e.matched() === before, e.matched());
+    t('清除鈕在無值時隱藏', e.$('atTimeClear').hidden);
+});
+
+// ---------------------------------------------------------------- 距離範圍
+await step(async () => {
+    const e = boot();
+    await section('距離範圍');
+    const T = e.api;
+    const before = e.matched();
+
+    // 還沒定位時設了範圍不該生效，而且要講清楚為什麼。
+    // 這裡直接設值再 update()，不走 change 事件 —— change 會順手觸發定位，
+    // 而測試的定位替身是同步成功的，「未定位」那個分支就測不到了。
+    e.$('radiusFilter').value = '1';
+    e.api.update();
+    t('未定位時提示有說明', e.$('radiusHint').textContent.includes('尚未定位'),
+        e.$('radiusHint').textContent);
+    t('未定位時範圍不生效', e.matched() === before, e.matched());
+
+    // 走 change 事件則會順手把定位叫出來（替身位置在台北車站）
+    e.$('radiusFilter').dispatchEvent(new e.window.Event('change', { bubbles: true }));
+    t('選了範圍會自動定位', e.$('locateBtn').classList.contains('on'));
+
+    const within = e.matched();
+    t('1 公里內明顯少於全部', within < before, within + ' vs ' + before);
+    const me = { lat: 25.0478, lng: 121.5170 };
+    t('結果全都在範圍內',
+        T.getFiltered().every(b => T.distanceKm(me, b) <= 1));
+    t('無座標的店被排除', T.getFiltered().every(b => T.hasGeo(b)));
+
+    e.$('radiusFilter').value = '0.5';
+    e.$('radiusFilter').dispatchEvent(new e.window.Event('change', { bubbles: true }));
+    t('範圍縮小結果變少或相等', e.matched() <= within, e.matched() + ' vs ' + within);
+
+    e.$('radiusFilter').value = 'all';
+    e.$('radiusFilter').dispatchEvent(new e.window.Event('change', { bubbles: true }));
+    t('改回不限就恢復', e.matched() === before, e.matched());
+    t('不限時提示不再警告', !e.$('radiusHint').classList.contains('warn'));
+});
+
+// ---------------------------------------------------------------- 最近捷運站
+await step(async () => {
+    const e = boot();
+    await section('最近捷運站');
+    const T = e.api;
+
+    t('載入了車站資料', T.STATIONS.length > 200, T.STATIONS.length);
+    t('車站都有名稱與座標', T.STATIONS.every(s =>
+        s.name && typeof s.lat === 'number' && typeof s.lng === 'number'));
+
+    // 台北車站附近的店一定找得到站
+    const taipei = T.BARS.filter(b => b.city === '台北市' && T.hasGeo(b));
+    const withStation = taipei.filter(b => T.nearestStation(b));
+    t('台北市多數有座標的店找得到捷運站',
+        withStation.length > taipei.length * 0.7,
+        `${withStation.length}/${taipei.length}`);
+
+    // 找出來的必須真的是最近的那一站
+    const sample = withStation.slice(0, 30);
+    t('回傳的確實是最近的站', sample.every(b => {
+        const s = T.nearestStation(b);
+        const min = Math.min(...T.STATIONS.map(x => T.distanceKm(b, x)));
+        return Math.abs(s.km - min) < 1e-9;
+    }));
+    t('超過上限就不回傳', T.BARS.every(b => {
+        const s = T.nearestStation(b);
+        return !s || s.km <= T.STATION_MAX_KM;
+    }));
+    t('無座標的店不會有站', T.BARS.filter(b => !T.hasGeo(b)).every(b => !T.nearestStation(b)));
+
+    t('文字含站名與步行時間', /站 .+・步行約 \d+ 分/.test(T.stationText(sample[0])), T.stationText(sample[0]));
+    t('沒有站時回空字串', T.stationText({ name: 'x', city: '台北市' }) === '');
+
+    // 卡片上要看得到
+    e.api.selectCity('台北市');
+    t('卡片顯示最近捷運站', e.$('barGrid').innerHTML.includes('🚇'));
+
+    // 近捷運標籤
+    const chip = e.qsa('#traitChips .chip').find(c => c.textContent.includes('捷運'));
+    t('有近捷運站標籤', !!chip);
+    e.click(chip);
+    t('標籤篩出來的都在門檻內', T.getFiltered().every(b => {
+        const s = T.nearestStation(b);
+        return s && s.km <= T.STATION_NEAR_KM;
+    }));
+    t('近捷運的數量合理', e.matched() > 0 && e.matched() < T.BARS.length, e.matched());
+});
+
+// ---------------------------------------------------------------- 路線分享
+await step(async () => {
+    const e = boot();
+    await section('路線分享');
+    const T = e.api;
+
+    // 排三攤再分享
+    for (let i = 0; i < 3; i++) e.click(e.qsa('.bar-card [data-act="route"]')[i]);
+    t('路線有三攤', T.store.route.length === 3, T.store.route.length);
+    const url = T.stateToUrl();
+    t('網址帶了路線', url.includes('route='));
+    t('用店名而不是索引當鍵',
+        decodeURIComponent(url.split('route=')[1].split('&')[0]).includes('|'));
+
+    e.click(e.$('shareBtn'));
+    await new Promise(r => setTimeout(r, 0));   // share() 是 async，toast 在 await 之後才設
+    t('分享提示標明攤數', e.$('toast').textContent.includes('3 攤'), e.$('toast').textContent);
+
+    // 對方開啟連結：自己沒有路線時直接收下
+    const e2 = boot(url);
+    t('對方載入到同一條路線',
+        JSON.stringify(e2.api.store.route) === JSON.stringify(T.store.route),
+        JSON.stringify(e2.api.store.route));
+
+    // 對方已有路線時要先問過
+    const seeded = { route: [T.barKey(T.BARS[500])], routeAt: Date.now() };
+    const e3 = boot(url, seeded);
+    e3.window.__confirm = false;
+    // boot 當下就套用過網址了，這裡直接驗證「拒絕時不覆蓋」的分支
+    e3.api.applySharedRoute(T.store.route.join('~'));
+    t('拒絕覆蓋時保留原本的路線', e3.api.store.route.length >= 1);
+
+    // 連結裡有已不存在的店時，剩下的仍然要載入
+    const e4 = boot();
+    e4.api.applySharedRoute([T.store.route[0], '不存在的店|台北市'].join('~'));
+    t('略過對不上的店，其餘照常載入', e4.api.store.route.length === 1, e4.api.store.route.length);
+
+    // 整串都對不上就什麼都不做
+    const e5 = boot();
+    e5.api.applySharedRoute('假的店|台北市~也是假的|高雄市');
+    t('全部對不上時不動路線', e5.api.store.route.length === 0);
+
+    // 超過上限要截斷
+    const e6 = boot();
+    e6.api.applySharedRoute(T.BARS.slice(0, 12).map(T.barKey).join('~'));
+    t('超過上限截斷至 8 攤', e6.api.store.route.length === 8, e6.api.store.route.length);
 });
 
 // ---------------------------------------------------------------- 網址分享

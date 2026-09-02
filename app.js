@@ -28,7 +28,8 @@ const TRAIT_TAGS = [
     { id: 'tea',     label: '🍵 茶酒', test: b => (b.note || '').includes('茶') || (b.style || '').includes('茶') },
     { id: 'daytime', label: '🕐 下午開喝', test: b => (b.note || '').includes('下午') || opensBefore(b, 17 * 60) },
     { id: 'cheap',   label: '💸 高 CP 值', test: b => b.price === 1 || (b.note || '').includes('便宜') },
-    { id: 'late',    label: '🌃 營業到 3 點後', test: b => closesAfter(b, 27 * 60) }
+    { id: 'late',    label: '🌃 營業到 3 點後', test: b => closesAfter(b, 27 * 60) },
+    { id: 'mrt',     label: '🚇 近捷運站', test: b => { const s = nearestStation(b); return !!s && s.km <= STATION_NEAR_KM; } }
 ];
 
 let selectedTypes = new Set();
@@ -149,6 +150,27 @@ function openPill(bar, now) {
 }
 
 // 有沒有任何一天在指定時間之前就開門
+// 「指定時段」輸入的 HH:MM 換算成一個 Date，好餵給 openState()。
+//
+// 哪一天要看跑吧的作息，不是日曆：填 23:00 是指今晚，填 01:00 是指今晚喝到
+// 凌晨那個 01:00，也就是明天。分界用 ROUTE_RESET_HOUR（中午 12 點）——
+// 與「今晚路線每天中午重設」同一套邏輯，使用者只要記一個規則。
+//
+// 這樣「我 11 點才出門」跟「凌晨 1 點還想喝」都會落在同一個晚上，
+// openState() 內建的跨夜判斷就會把前一天延續過來的場次算進去。
+function timeToDate(hhmm, now = new Date()) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || '');
+    if (!m) return null;
+    const h = Number(m[1]), min = Number(m[2]);
+    if (h > 23 || min > 59) return null;
+    const d = new Date(now);
+    d.setSeconds(0, 0);
+    d.setHours(h, min);
+    // 目標時間在中午之前 = 指隔天凌晨；但如果現在本來就是凌晨，就是指今天
+    if (h < ROUTE_RESET_HOUR && now.getHours() >= ROUTE_RESET_HOUR) d.setDate(d.getDate() + 1);
+    return d;
+}
+
 function opensBefore(bar, mins) {
     const p = parseHours(bar.hours);
     if (!p) return false;
@@ -322,6 +344,40 @@ function distanceKm(a, b) {
     return 2 * R * Math.asin(Math.sqrt(x));
 }
 
+// ===== 最近的捷運站 =====
+// 台灣跑吧多半靠捷運移動，「離最近站 320 公尺」比一組經緯度好用得多。
+// 車站資料在 stations.js，由 tools/fetch_stations.js 從 OpenStreetMap 產生。
+//
+// 超過這個距離就不顯示：走路 15 分鐘以上的話，「最近的捷運站」
+// 已經不影響你要不要去，寫出來只是雜訊。
+const STATION_MAX_KM = 1.2;
+// 這個距離內視為「站旁邊」，可用標籤篩選
+const STATION_NEAR_KM = 0.5;
+
+// 逐間算會重複很多次（每次換頁、每次篩選都要重畫卡片），算過就記在 bar 上。
+// 用 undefined 代表還沒算、null 代表算過但沒有夠近的站，兩者要分開，
+// 否則沒有站的店每次都會重算一輪 273 個距離。
+function nearestStation(b) {
+    if (b._station !== undefined) return b._station;
+    if (!hasGeo(b) || typeof STATIONS === 'undefined') return (b._station = null);
+    let best = null, bestKm = Infinity;
+    for (const s of STATIONS) {
+        const km = distanceKm(b, s);
+        if (km < bestKm) { bestKm = km; best = s; }
+    }
+    return (b._station = (best && bestKm <= STATION_MAX_KM) ? { ...best, km: bestKm } : null);
+}
+
+// 「捷運頂埔站 320 公尺・步行約 4 分」
+function stationText(b) {
+    const s = nearestStation(b);
+    if (!s) return '';
+    const m = Math.round(s.km * 1000);
+    const dist = m < 1000 ? `${m} 公尺` : `${s.km.toFixed(1)} 公里`;
+    const mins = Math.max(1, Math.round(s.km / 4.5 * 60));   // 與路線推算同一個步行速度
+    return `${s.name}站 ${dist}・步行約 ${mins} 分`;
+}
+
 // ===== 縣市頁籤 =====
 let currentCity = 'all';
 
@@ -428,6 +484,8 @@ function renderCard(b, now) {
     const details = [`<span>${openPill(b, now)}</span>`];
     const dist = distanceText(b);
     if (dist) details.push(`<span class="dist">📍 距離 ${esc(dist)}</span>`);
+    const stn = stationText(b);
+    if (stn) details.push(`<span class="station">🚇 ${esc(stn)}</span>`);
     if (b.rating) details.push(ratingHtml(b));
     if (budgetText(b)) details.push(`<span>💰 人均 <span class="budget">${esc(budgetText(b))}</span></span>`);
     if (b.hours) details.push(`<span>🕘 ${esc(b.hours)}</span>`);
@@ -470,6 +528,7 @@ function openDetail(id) {
     const rows = [];
     rows.push(['目前狀態', openPill(b, now)]);
     if (distanceText(b)) rows.push(['離我多遠', `<span class="dist">${esc(distanceText(b))}</span>`]);
+    if (stationText(b)) rows.push(['最近捷運', `🚇 ${esc(stationText(b))}`]);
     if (b.rating) rows.push(['Google 評分', ratingHtml(b, true)]);
     if (budgetText(b)) rows.push(['人均消費', `<span class="budget">${esc(budgetText(b))}</span>${b.budget ? '' : '　<span style="color:#777;font-size:0.85em">(依價位級距估算)</span>'}`]);
     if (b.hours) rows.push(['營業時間', esc(b.hours)]);
@@ -1910,11 +1969,16 @@ function stateToUrl() {
     const put = (id, key) => { const v = $(id).value; if (v && v !== 'all') p.set(key, v); };
     put('districtFilter', 'dist'); put('purposeFilter', 'purpose');
     put('priceFilter', 'price'); put('stateFilter', 'state'); put('sortFilter', 'sort');
+    put('radiusFilter', 'radius'); put('atTimeFilter', 'at');
     if (selectedTypes.size) p.set('types', [...selectedTypes].join(','));
     if (selectedTraits.size) p.set('traits', [...selectedTraits].join(','));
     const q = $('searchInput').value.trim();
     if (q) p.set('q', q);
     if (currentView !== 'list') p.set('view', currentView);
+    // 今晚路線一起帶著走：「我排好五攤了，你看一下」是分享連結最常見的用途。
+    // 用 barKey（店名|縣市）而不是陣列索引——索引會隨 data.js 增修而位移，
+    // 昨天分享的連結明天就指到別間店了。
+    if (store.route.length) p.set('route', store.route.join('~'));
     const s = p.toString();
     return location.origin + location.pathname + (s ? '?' + s : '');
 }
@@ -1927,17 +1991,42 @@ function applyUrlState() {
     const set = (id, key) => { const v = p.get(key); if (v !== null) $(id).value = v; };
     set('districtFilter', 'dist'); set('purposeFilter', 'purpose');
     set('priceFilter', 'price'); set('stateFilter', 'state'); set('sortFilter', 'sort');
+    set('radiusFilter', 'radius'); set('atTimeFilter', 'at');
     if (p.get('types')) selectedTypes = new Set(p.get('types').split(',').filter(Boolean));
     if (p.get('traits')) selectedTraits = new Set(p.get('traits').split(',').filter(Boolean));
     if (p.get('q')) $('searchInput').value = p.get('q');
+    if (p.get('route')) applySharedRoute(p.get('route'));
     if (p.get('view') === 'map') setView('map');
+}
+
+// 把分享連結帶來的路線收下來。
+// 只收目前 data.js 裡真的存在的店：連結可能是舊的，或那間店已經被改名／移除。
+// 對不上的略過而不是整串放棄——五攤裡有一攤消失，另外四攤仍然有用。
+function applySharedRoute(raw) {
+    const keys = raw.split('~').map(s => s.trim()).filter(Boolean);
+    const valid = keys.filter(k => byKey[k]).slice(0, MAX_ROUTE);
+    if (!valid.length) return;
+
+    // 覆蓋掉別人辛苦排好的路線是不可逆的，所以先問。
+    // 自己的路線是空的就不必問，直接收下。
+    if (store.route.length && !confirm(
+        `這個連結帶了 ${valid.length} 攤的路線。\n要用它取代你目前的 ${store.route.length} 攤嗎？`)) return;
+
+    store.route = valid;
+    touchRoute();
+    saveStore();
+    const lost = keys.length - valid.length;
+    setTimeout(() => toast(
+        `已載入分享的路線 ${valid.length} 攤${lost ? `（${lost} 間已不在清單中）` : ''} 🍻`), 300);
 }
 
 async function share() {
     const url = stateToUrl();
+    const n = store.route.length;
+    const what = n ? `連結已複製（含今晚路線 ${n} 攤）` : '連結已複製';
     try {
         await navigator.clipboard.writeText(url);
-        toast('連結已複製，可以貼給酒友了 🍻');
+        toast(what + '，可以貼給酒友了 🍻');
     } catch (e) {
         // 沒有剪貼簿權限（或非 HTTPS）時，退而求其次讓使用者自己複製
         window.prompt('複製這段連結分享給酒友：', url);
@@ -2124,6 +2213,36 @@ function setPageSize(n) {
 
 // resetPage=false 用於每分鐘的營業狀態刷新：資料沒變，
 // 不該把正在看第 12 頁的人丟回第 1 頁。
+// 兩個新篩選都有「填了卻不生效」的可能（時間格式不對、還沒定位），
+// 靜靜地不生效最難查，所以把狀態直接寫在欄位下方。
+function refreshFilterHints(atTime, radiusValue) {
+    const raw = $('atTimeFilter').value;
+    const th = $('atTimeHint');
+    $('atTimeClear').hidden = !raw;
+    if (!raw) {
+        th.textContent = '留空 = 不限。填了只看那時營業的店';
+        th.classList.remove('warn');
+    } else {
+        const wd = ['日', '一', '二', '三', '四', '五', '六'][atTime.getDay()];
+        // 把換算後的日期寫出來，使用者才知道 01:00 被當成哪一天
+        th.textContent = `只看週${wd} ${raw} 營業的店（凌晨時段算在前一晚）`;
+        th.classList.add('warn');
+    }
+
+    const rh = $('radiusHint');
+    if (radiusValue === 'all') {
+        rh.textContent = '不限距離';
+        rh.classList.remove('warn');
+    } else if (!myPos) {
+        rh.textContent = '尚未定位，範圍未生效。按上方「📍 離我最近」';
+        rh.classList.add('warn');
+    } else {
+        const noGeo = BARS.filter(b => !hasGeo(b)).length;
+        rh.textContent = `以目前位置為中心${noGeo ? `（${noGeo} 間無座標的店不會出現）` : ''}`;
+        rh.classList.add('warn');
+    }
+}
+
 function update(resetPage = true) {
     const now = new Date();
     const d = districtSelect.value;
@@ -2132,6 +2251,11 @@ function update(resetPage = true) {
     const st = $('stateFilter').value;
     const sort = $('sortFilter').value;
     const q = $('searchInput').value.trim().toLowerCase();
+    // 指定時段：填了就用那個時間點判斷營業狀態，沒填就用現在
+    const atTime = timeToDate($('atTimeFilter').value, now);
+    // 距離範圍：沒定位就無從判斷，一律視為不限（提示文字會說明）
+    const rf = $('radiusFilter').value;
+    const radius = (rf !== 'all' && myPos) ? Number(rf) : null;
 
     const filtered = BARS.filter(b => {
         const note = b.note || '';
@@ -2146,6 +2270,11 @@ function update(resetPage = true) {
             return tag ? tag.test(b) : true;
         });
         const matchPrice = pr === 'all' || b.price === Number(pr);
+        // 指定時段：只留那時確定有開的。解析不出營業時間的排除掉——
+        // 這裡問的是「那時能不能去」，「時間未知」不是肯定的答案。
+        const matchTime = !atTime || openState(b, atTime).state === 'open';
+        // 距離範圍：沒座標就算不出距離，設了範圍時一律排除
+        const matchRadius = !radius || (hasGeo(b) && distanceKm(myPos, b) <= radius);
         const matchState = st === 'all' ||
             (st === 'open' && openState(b, now).state === 'open') ||
             (st === 'want' && isWant(b)) ||
@@ -2153,8 +2282,11 @@ function update(resetPage = true) {
             (st === 'unvisited' && !isVisited(b));
         const haystack = [b.name, note, b.city, b.district, b.style, ...(b.awards || [])].filter(Boolean).join(' ').toLowerCase();
         const matchSearch = !q || haystack.includes(q);
-        return matchCity && matchDistrict && matchPurpose && matchType && matchTraits && matchPrice && matchState && matchSearch;
+        return matchCity && matchDistrict && matchPurpose && matchType && matchTraits &&
+               matchPrice && matchState && matchSearch && matchTime && matchRadius;
     });
+
+    refreshFilterHints(atTime, rf);
 
     const sorted = sortBars(filtered, sort);
     lastFiltered = sorted;
@@ -2364,6 +2496,15 @@ pager.addEventListener('click', e => {
 });
 $('pageSizeSelect').value = String(pageSize);
 $('pageSizeSelect').addEventListener('change', e => setPageSize(Number(e.target.value)));
+
+// time 型輸入不在上面那批 select / text 的選擇器裡，另外綁
+$('atTimeFilter').addEventListener('input', () => update());
+$('atTimeClear').addEventListener('click', () => { $('atTimeFilter').value = ''; update(); });
+// 選了距離範圍卻還沒定位的話，直接幫忙叫出定位，不用再自己去按上面那顆
+$('radiusFilter').addEventListener('change', () => {
+    if ($('radiusFilter').value !== 'all' && !myPos) locateMe();
+    update();
+});
 
 update();
 setInterval(() => {
