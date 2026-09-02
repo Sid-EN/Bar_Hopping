@@ -3,6 +3,17 @@
  * 功能測試：用 jsdom 載入真實的 index.html + data.js + app.js，模擬使用者操作。
  * 執行：node tests/app.test.js
  */
+// 這支測試要開幾十個 jsdom，每個都塞著全部酒吧的 DOM。jsdom 關掉之後不會馬上釋放，
+// 光靠 V8 自己在記憶體壓力下回收來不及，資料量一大就會 heap 溢位。
+// 解法是主動呼叫 GC，而那需要 --expose-gc；這裡自己重跑一次把旗標帶上，
+// 這樣不管是 npm test 還是直接 node tests/app.test.js 都有一致的行為。
+if (typeof global.gc !== 'function') {
+    const { spawnSync } = require('child_process');
+    const r = spawnSync(process.execPath, ['--expose-gc', __filename, ...process.argv.slice(2)],
+                        { stdio: 'inherit' });
+    process.exit(r.status === null ? 1 : r.status);
+}
+
 const { JSDOM } = require('jsdom');
 const fs = require('fs');
 const path = require('path');
@@ -25,11 +36,14 @@ const closePrevious = () => {
         try { w.close(); } catch (e) { /* 已經關掉就算了 */ }
     }
 };
-// jsdom 的 window.close() 不是同步釋放：要讓出一次事件迴圈，那份 DOM 才會變成可回收。
-// 這支測試原本從頭到尾都是同步的，所以 29 個 jsdom 會一路累積到 heap 爆掉。
+// jsdom 的 window.close() 不是同步釋放：要讓出一次事件迴圈，那份 DOM 才會變成可回收，
+// 之後再主動 GC 收掉。少了任何一步，記憶體都會隨區塊數線性累積直到爆掉。
+let peakMb = 0;
 const section = async s => {
     closePrevious();
     await new Promise(r => setTimeout(r, 0));
+    global.gc();
+    peakMb = Math.max(peakMb, process.memoryUsage().heapUsed / 1048576);
     console.log('\n=== ' + s + ' ===');
 };
 
@@ -1062,10 +1076,26 @@ await step(async () => {
     t('有酒吧的區可以選', opts.some(o => o.value === '羅東鎮' && !o.disabled));
     e.api.selectCity('all');
 });
+
+// ------------------------------------------------------------------ 記憶體守門
+// 曾經因為 jsdom 沒被釋放，資料量一多整份測試就 heap 溢位。
+// 這裡守住「每個區塊結束後的記憶體不隨區塊數累積」，避免同樣的問題再回來。
+await step(async () => {
+    await section('記憶體用量');
+    const bars = new Function(readOnce('data.js') + '; return BARS;')().length;
+    // 實測：健康狀態下峰值約 0.45 MB/間（同時最多活 2～3 個 jsdom，其餘已回收）；
+    // 若 jsdom 又沒被釋放，會變成「區塊數 × 0.13 MB/間」≈ 3.5 MB/間。
+    // 取 1 MB/間當界線：離正常值有兩倍餘裕，又遠低於漏掉時的量。
+    const budget = Math.max(800, bars * 1.0);
+    t(`峰值堆積量在預算內（${bars} 間，上限 ${Math.round(budget)} MB）`,
+        peakMb < budget, Math.round(peakMb) + ' MB');
+    t('GC 可用（--expose-gc 有生效）', typeof global.gc === 'function');
+});
 }
 
 main().then(() => {
-    console.log('\n通過 ' + pass + ' 項，失敗 ' + fail + ' 項');
+    console.log(`\n峰值堆積量 ${Math.round(peakMb)} MB`);
+    console.log('通過 ' + pass + ' 項，失敗 ' + fail + ' 項');
     process.exit(fail ? 1 : 0);
 }).catch(err => {
     console.error('測試執行中斷：', err);
