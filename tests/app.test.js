@@ -133,8 +133,9 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         ' lastResetPoint, pruneRoute, touchRoute, personalData, syncUp, syncDown, ROUTE_RESET_HOUR,' +
         // 卡片是分批渲染的，所以測試要能問「篩選出幾間」（不等於 DOM 裡有幾張卡），
         // 也要能把剩下的批次全部展開再數 DOM。lastFiltered 會被整個換掉，用 getter 取才不會拿到舊的。
-        ' getFiltered: () => lastFiltered, showMoreCards, CARDS_PER_PAGE,' +
-        ' showAll: () => { while (shownCount < lastFiltered.length) showMoreCards(); } };');
+        ' getFiltered: () => lastFiltered, goToPage, setPageSize, renderPager,' +
+        ' PAGE_SIZES, pageButtons, getPageSize: () => pageSize, getPage: () => currentPage,' +
+        ' pageCount };');
 
     const api = window.__t;
     return {
@@ -147,8 +148,26 @@ function boot(url = 'https://example.com/index.html', seed = null) {
         cards: () => window.document.querySelectorAll('.bar-card').length,
         // 篩選結果的總數。卡片分批進 DOM，所以這個值通常大於 cards()。
         matched: () => window.__t.getFiltered().length,
-        // 把剩下的批次全部展開，讓需要掃描整份清單的斷言可以照舊數 DOM
-        showAll: () => { window.__t.showAll(); return window.document.querySelectorAll('.bar-card').length; },
+        // 卡片改成分頁後，DOM 裡一次只有一頁。要驗整份清單的斷言就把每頁走過一遍再累加。
+        eachPage: cb => {
+            const T = window.__t;
+            T.setPageSize(100);
+            for (let p = 1; p <= T.pageCount(); p++) {
+                T.goToPage(p, false);
+                cb(window.document.getElementById('barGrid'));
+            }
+        },
+        allNames() {
+            const out = [];
+            this.eachPage(g => out.push(...[...g.innerHTML
+                .matchAll(/class="bar-name">([^<]+)</g)].map(m => m[1])));
+            return out;
+        },
+        countAll(sel) {
+            let n = 0;
+            this.eachPage(g => { n += g.querySelectorAll(sel).length; });
+            return n;
+        },
         // 搜尋框是 debounce 的，要等它真的觸發重繪
         search: async q => {
             const el = window.document.getElementById('searchInput');
@@ -172,60 +191,92 @@ await step(async () => {
     const e = boot();
     await section('基本渲染');
     const total = e.api.BARS.length;
-    // 首屏只放一批卡片，其餘捲到底再補；篩選結果本身仍是全部
-    t(`首屏只渲染 ${e.api.CARDS_PER_PAGE} 張卡片`, e.cards() === e.api.CARDS_PER_PAGE, e.cards());
+    // 卡片是分頁的，DOM 裡只有目前這一頁；篩選結果本身仍是全部
+    t('首頁卡片數 = 每頁筆數', e.cards() === e.api.getPageSize(), e.cards());
     t(`篩選結果為全部 ${total} 間`, e.matched() === total, e.matched());
-    t('還有未載入的批次時顯示提示', !e.$('gridMore').hidden);
     t('副標顯示總數', e.$('subtitle').textContent.includes(String(total)));
     t('進度條初始為 0', e.$('progressText').textContent.startsWith('0 /'));
     t('路線列初始隱藏', e.$('routeBar').hidden);
 
-    t(`展開後渲染 ${total} 張卡片`, e.showAll() === total, e.cards());
-    t('全部載完後隱藏提示', e.$('gridMore').hidden);
-    t('每張卡都有營業狀態', e.qsa('.open-pill').length === total);
-    t('星級數 = 有評分筆數', e.qsa('.stars-fill').length === e.api.BARS.filter(b => b.rating).length);
-    t('人均數 = 有價位筆數',
-        (e.$('barGrid').innerHTML.match(/人均/g) || []).length === e.api.BARS.filter(b => b.price).length);
+    t(`逐頁走完共渲染 ${total} 張卡片`, e.countAll('.bar-card') === total, e.countAll('.bar-card'));
+    t('每張卡都有營業狀態', e.countAll('.open-pill') === total, e.countAll('.open-pill'));
+    t('星級數 = 有評分筆數',
+        e.countAll('.stars-fill') === e.api.BARS.filter(b => b.rating).length, e.countAll('.stars-fill'));
+    let yen = 0;
+    e.eachPage(g => { yen += (g.innerHTML.match(/人均/g) || []).length; });
+    t('人均數 = 有價位筆數', yen === e.api.BARS.filter(b => b.price).length, yen);
 });
 
-// ---------------------------------------------------------------- 分批渲染
+// ---------------------------------------------------------------- 分頁
 // 曾經一次把整份清單塞進 innerHTML，資料到兩千間之後每次篩選都要重建三萬多個節點，
-// 操作明顯卡頓。這裡守住「進 DOM 的卡片數有上限、而且會隨捲動增加」。
+// 操作明顯卡頓。這裡守住「DOM 裡一次只有一頁」以及換頁／換每頁筆數的行為。
 await step(async () => {
     const e = boot();
-    await section('分批渲染');
-    const PAGE = e.api.CARDS_PER_PAGE;
-    const total = e.api.BARS.length;
+    await section('分頁');
+    const T = e.api;
+    const total = T.BARS.length;
 
-    t('首屏卡片數不超過一批', e.cards() <= PAGE, e.cards());
-    t('首屏節點數遠少於全部展開', e.qsa('#barGrid *').length < 3000, e.qsa('#barGrid *').length);
+    t('預設每頁 50 筆', T.getPageSize() === 50, T.getPageSize());
+    t('首頁只渲染一頁的量', e.cards() === 50, e.cards());
+    t('DOM 節點數遠少於整份清單', e.qsa('#barGrid *').length < 3000, e.qsa('#barGrid *').length);
+    t('頁數正確', T.pageCount() === Math.ceil(total / 50), T.pageCount());
+    t('分頁列有顯示', !e.$('pager').hidden);
+    t('頁碼資訊正確', e.$('pagerInfo').textContent.includes(`共 ${total} 間`), e.$('pagerInfo').textContent);
 
-    // 捲到底補下一批
-    const firstName = e.$('barGrid').querySelector('.bar-name').textContent;
-    e.api.showMoreCards();
-    t('捲動後補上下一批', e.cards() === Math.min(PAGE * 2, total), e.cards());
-    t('補批次不會重建已顯示的卡片',
-        e.$('barGrid').querySelector('.bar-name').textContent === firstName);
+    // 換頁
+    const firstOfPage1 = e.$('barGrid').querySelector('.bar-name').textContent;
+    T.goToPage(2, false);
+    t('換頁後頁碼更新', T.getPage() === 2, T.getPage());
+    t('換頁後卡片換一批',
+        e.$('barGrid').querySelector('.bar-name').textContent !== firstOfPage1);
+    t('第 2 頁的第一筆 = 全清單第 51 筆',
+        e.$('barGrid').querySelector('.bar-name').textContent === T.getFiltered()[50].name.replace(/&/g, '&amp;'),
+        e.$('barGrid').querySelector('.bar-name').textContent);
+    t('最後一頁不滿也不會超出',
+        (T.goToPage(T.pageCount(), false), e.cards() === total - (T.pageCount() - 1) * 50), e.cards());
+    t('頁碼不會超出範圍', (T.goToPage(9999, false), T.getPage() === T.pageCount()), T.getPage());
+    t('頁碼不會小於 1', (T.goToPage(-5, false), T.getPage() === 1), T.getPage());
 
-    // 改篩選條件要回到第一批，不然清單換了卻還留著上一份的長度
+    // 每頁筆數
+    for (const n of T.PAGE_SIZES) {
+        T.goToPage(1, false);
+        T.setPageSize(n);
+        t(`每頁 ${n} 筆`, e.cards() === Math.min(n, total), e.cards());
+    }
+    t('每頁筆數存進 localStorage',
+        e.window.localStorage.getItem('barbible.pagesize') === String(T.PAGE_SIZES[T.PAGE_SIZES.length - 1]));
+
+    // 換每頁筆數時停在原本看的那一筆附近，不要被丟回第一頁
+    T.setPageSize(10);
+    T.goToPage(11, false);                       // 第 11 頁 → 第 101 筆起
+    T.setPageSize(50);
+    t('換每頁筆數後停在原本的位置', T.getPage() === 3, T.getPage());   // 第 101 筆落在 50 筆制的第 3 頁
+
+    // 改篩選條件要回到第一頁，不然清單換了卻還停在不存在的頁碼
+    T.goToPage(5, false);
     e.api.selectCity('台南市');
-    t('換篩選條件後回到第一批', e.cards() === Math.min(PAGE, e.matched()), e.cards());
+    t('換篩選條件後回到第一頁', T.getPage() === 1, T.getPage());
     e.api.selectCity('all');
 
-    // 每分鐘刷新營業狀態時若也重置，使用者捲到一半會被拉回開頭
-    e.api.showMoreCards(); e.api.showMoreCards();
-    const shown = e.cards();
-    e.api.update(true);
-    t('定時刷新保留已捲出的卡片', e.cards() === shown, e.cards() + ' vs ' + shown);
-    e.api.update();
-    t('一般刷新回到第一批', e.cards() === PAGE, e.cards());
+    // 每分鐘刷新營業狀態時若也重置，正在看第 12 頁的人會被丟回第 1 頁
+    T.goToPage(12, false);
+    T.update(false);
+    t('定時刷新保留目前頁碼', T.getPage() === 12, T.getPage());
+    T.update();
+    t('一般刷新回到第一頁', T.getPage() === 1, T.getPage());
 
-    // 篩到剩下不足一批時，提示要收起來
+    // 頁碼按鈕會摺疊，不然兩千間會排出四十顆按鈕
+    const btns = T.pageButtons(20, 41);
+    t('頁碼按鈕有摺疊', btns.length <= 9 && btns.includes('…'), JSON.stringify(btns));
+    t('摺疊後仍含頭尾與目前頁', btns.includes(1) && btns.includes(41) && btns.includes(20));
+    t('頁數少時不摺疊', JSON.stringify(T.pageButtons(1, 3)) === '[1,2,3]');
+
+    // 只有一頁時不需要分頁列
     await e.search('zzz不可能存在的店zzz');
-    t('無結果時隱藏載入提示', e.$('gridMore').hidden);
+    t('無結果時隱藏分頁列', e.$('pager').hidden);
     t('無結果時顯示空狀態', e.$('barGrid').innerHTML.includes('找不到符合條件'));
     await e.search('');
-    t('清空搜尋後恢復', e.cards() === PAGE && !e.$('gridMore').hidden, e.cards());
+    t('清空搜尋後恢復', e.cards() === T.getPageSize() && !e.$('pager').hidden, e.cards());
 });
 
 // ---------------------------------------------------------------- 營業時間解析
@@ -445,8 +496,7 @@ await step(async () => {
     t('按鈕標示已定位', e.$('locateBtn').classList.contains('on'));
     t('卡片顯示距離', e.$('barGrid').innerHTML.includes('距離'));
 
-    e.showAll();   // 要看排序的尾端，得先把所有批次展開
-    const names = [...e.$('barGrid').innerHTML.matchAll(/class="bar-name">([^<]+)</g)].map(m => m[1]);
+    const names = e.allNames();   // 要看排序的尾端，得把每一頁都走過
     const at = n => T.BARS.find(b => b.name === n.replace(/&amp;/g, '&').replace(/&#39;/g, "'"));
     const me = { lat: 25.0478, lng: 121.5170 };
     const first10 = names.slice(0, 10).map(at).filter(b => b && T.hasGeo(b));
